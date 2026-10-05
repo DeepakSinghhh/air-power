@@ -24,7 +24,11 @@ from .fmp import Requirement, plan_fleet
 
 
 def plan_requirement(st: FleetState, belief, sqn: int, start: int, end: int, min_mc: int, surge: float = 1.0,
-                     reps: int = 80, nff_tpr: float = 0.47, nff_fpr: float = 0.08, seed0: int = 4242) -> dict:
+                     reps: int = 80, nff_tpr: float = 0.47, nff_fpr: float = 0.08, seed0: int = 4242,
+                     truth_check: bool = False) -> dict:
+    """P(meet) for each cumulative action, from the models' beliefs. With ``truth_check`` every step is
+    also replayed in futures drawn from the twin's hidden ground truth (which the models never see), so
+    the predicted gains can be compared with what would actually have happened."""
     t0 = time.time()
     horizon = end + 6
     scen = Scenario(surges=[(sqn, st.day + start, st.day + end, surge)] if surge != 1.0 else [])
@@ -38,6 +42,9 @@ def plan_requirement(st: FleetState, belief, sqn: int, start: int, end: int, min
         steps.append({"lever": lever, "label": label, "p_meet": p, "mean_mc_window": float(win.mean()),
                       "p10_window": float(min(f.bands(sqn)["p10"][start:end + 1])),
                       "daily_p_meet": f.p_meet_daily(sqn, min_mc), "bands": f.bands(sqn), "details": details})
+        if truth_check:
+            t = forecast(state, pol, horizon, reps, belief, scen, mode="truth_resampled", seed0=seed0 + 50_000)
+            steps[-1]["p_meet_truth"] = t.p_meet(sqn, start, end, min_mc)
         return f
 
     score(st, base_pol, "Current practice", "baseline", [])
@@ -76,10 +83,12 @@ def plan_requirement(st: FleetState, belief, sqn: int, start: int, end: int, min
 
     for i, s in enumerate(steps):
         s["gain"] = 0.0 if i == 0 else s["p_meet"] - steps[i - 1]["p_meet"]
+        if truth_check:
+            s["gain_truth"] = 0.0 if i == 0 else s["p_meet_truth"] - steps[i - 1]["p_meet_truth"]
     return {
         "squadron": SQN_IDS[sqn], "squadron_name": SQUADRONS[SQN_IDS[sqn]].name, "base": base,
         "window": {"start": start, "end": end, "start_date": str(day_to_date(st.day + start)),
                    "end_date": str(day_to_date(st.day + end))},
-        "min_mc": min_mc, "surge": surge, "reps": reps, "horizon": horizon,
+        "min_mc": min_mc, "surge": surge, "reps": reps, "horizon": horizon, "truth_checked": truth_check,
         "steps": steps, "plan": sp, "elapsed_s": time.time() - t0,
     }

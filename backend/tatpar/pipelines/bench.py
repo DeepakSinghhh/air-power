@@ -145,7 +145,8 @@ def run(quick: bool = False) -> dict:
     _save("advisors", {"transfers": transfer_plan(st, belief, 14), "cannibalisation": cannibalisation_advice(st),
                        "expedite": expedite_candidates(st, belief, None, 30, 10)})
     req = plan_requirement(st, belief, DEMO_REQ["sqn"], DEMO_REQ["start"], DEMO_REQ["end"], DEMO_REQ["min_mc"],
-                           DEMO_REQ["surge"], reps=80 if quick else 120, nff_tpr=nff["tpr"], nff_fpr=nff["fpr"])
+                           DEMO_REQ["surge"], reps=80 if quick else 120, nff_tpr=nff["tpr"], nff_fpr=nff["fpr"],
+                           truth_check=True)
     _save("requirement_demo", req)
     _save("environment", base_table())
     fed = fedavg.run(rounds=80 if quick else 200, verbose=True)
@@ -154,7 +155,7 @@ def run(quick: bool = False) -> dict:
         "elapsed_s": time.time() - t0,
         "forecast_calibration": {"p10_p90": cov80, "p25_p75": cov50},
         "levers": [(r["label"], round(r["mc"] * 100, 1), round(r.get("delta", 0) * 100, 1)) for r in lever_rows],
-        "requirement": [(s["label"], round(s["p_meet"], 2)) for s in req["steps"]],
+        "requirement": [(s["label"], round(s["p_meet"], 2), round(s.get("p_meet_truth", float("nan")), 2)) for s in req["steps"]],
         "rbs": {"budget_lakh": rbs_p["budget_lakh"], "A_current": rbs_p["availability_current"],
                 "A_rbs": rbs_p["availability_rbs"]},
         "federated": {r["regime"]: round(r["rmse"], 2) for r in fed["results"]},
@@ -214,14 +215,23 @@ def write_evaluation_doc(metrics: dict) -> None:
         "",
         "## 2. LRU reliability models (recovering the hidden truth)",
         "",
-        f"* {len(s['per_lru'])} Weibull AFT models, mean concordance {s['mean_c_index']:.3f}",
+        f"* {len(s['per_lru'])} Weibull AFT models. Concordance on serials held out of the fit: "
+        f"**{s['mean_c_index_heldout']:.3f}** (mean over the {s['heldout_lrus']} LRU types with enough held-out failures; "
+        f"in-sample {s['mean_c_index']:.3f}): the base-environment and mission-severity covariates do not rank serials better "
+        "than chance. What the models do capture is how risk rises with hours since repair (the Weibull shape, below) and "
+        "the average effect of each base, which is what forecasting and sparing use; picking *which* serial fails first "
+        "needs condition data (HUMS) — available here for engines only.",
+        "* The twin draws lives from Weibull distributions, so the model family matches the generator by construction; "
+        "the checks below test whether the *parameters* are recovered from censored, left-truncated records.",
         f"* Weibull shape recovered with mean absolute error **{s['shape_mae']:.2f}**",
         f"* Mean life per (LRU, base) recovered with R² **{s['life_recovery']['r2_log']:.2f}** (log scale)",
         "",
         "## 3. Logistics-leak detectors",
         "",
-        f"* No-Fault-Found predictor (tail-grouped CV): AUC **{metrics['nff']['auc']:.3f}**; at the operating point "
-        f"it catches {metrics['nff']['tpr']:.0%} of NFF removals with {metrics['nff']['fpr']:.0%} false re-tests.",
+        f"* No-Fault-Found predictor (tail-grouped CV): AUC **{metrics['nff']['auc']:.3f}**; at an operating point chosen "
+        f"on the other folds only (nested CV) it catches {metrics['nff']['tpr']:.0%} of NFF removals with "
+        f"{metrics['nff']['fpr']:.0%} false re-tests. The synthetic snag text carries intermittency and BITE-reset cues "
+        "more often for NFF removals; real tech-log text will be noisier.",
         f"* Rogue-unit detector: precision **{metrics['rogue']['precision']:.0%}**, recall {metrics['rogue']['recall']:.0%} "
         f"of rogue serials with any removal ({metrics['rogue']['recall_3plus_removals']:.0%} of those with ≥3).",
         f"* Chronic-defect episodes found: {metrics['chronic_defects']}.",
@@ -267,11 +277,15 @@ def write_evaluation_doc(metrics: dict) -> None:
         f"Requirement: ≥{rq['min_mc']} mission-capable aircraft at {rq['squadron_name']} from D+{rq['window']['start']} to "
         f"D+{rq['window']['end']} with a {rq['surge']:.0%} flying task.",
         "",
-        "| Action | P(meet requirement) | Gain |",
-        "|---|---|---|",
+        "Predicted = Monte-Carlo from the models' beliefs (what the planner shows). Realised = the same actions replayed in "
+        "futures drawn from the twin's hidden ground truth, which the models never see.",
+        "",
+        "| Action | P(meet) predicted | Gain | P(meet) realised in hidden truth | Gain |",
+        "|---|---|---|---|---|",
     ]
     for st_ in rq["steps"]:
-        lines.append(f"| {st_['label']} | {st_['p_meet']:.0%} | {st_['gain']*100:+.0f} pts |")
+        tr = (f"{st_['p_meet_truth']:.0%} | {st_['gain_truth']*100:+.0f} pts" if "p_meet_truth" in st_ else "— | —")
+        lines.append(f"| {st_['label']} | {st_['p_meet']:.0%} | {st_['gain']*100:+.0f} pts | {tr} |")
     fp = BENCH_DIR / "federated.json"
     if fp.exists():
         fd = json.loads(fp.read_text())

@@ -16,13 +16,14 @@ Conformalised quantile regression lifts interval coverage to the nominal 90 % wi
 
 ## 2. LRU reliability models (recovering the hidden truth)
 
-* 24 Weibull AFT models, mean concordance 0.596
+* 24 Weibull AFT models. Concordance on serials held out of the fit: **0.493** (mean over the 11 LRU types with enough held-out failures; in-sample 0.596): the base-environment and mission-severity covariates do not rank serials better than chance. What the models do capture is how risk rises with hours since repair (the Weibull shape, below) and the average effect of each base, which is what forecasting and sparing use; picking *which* serial fails first needs condition data (HUMS) — available here for engines only.
+* The twin draws lives from Weibull distributions, so the model family matches the generator by construction; the checks below test whether the *parameters* are recovered from censored, left-truncated records.
 * Weibull shape recovered with mean absolute error **0.17**
 * Mean life per (LRU, base) recovered with R² **0.65** (log scale)
 
 ## 3. Logistics-leak detectors
 
-* No-Fault-Found predictor (tail-grouped CV): AUC **0.808**; at the operating point it catches 47% of NFF removals with 8% false re-tests.
+* No-Fault-Found predictor (tail-grouped CV): AUC **0.808**; at an operating point chosen on the other folds only (nested CV) it catches 46% of NFF removals with 8% false re-tests. The synthetic snag text carries intermittency and BITE-reset cues more often for NFF removals; real tech-log text will be noisier.
 * Rogue-unit detector: precision **100%**, recall 29% of rogue serials with any removal (36% of those with ≥3).
 * Chronic-defect episodes found: 7.
 
@@ -46,10 +47,10 @@ Belief-mode forecasts (models only) vs outcomes drawn from the hidden truth: the
 | + Consolidated cannibalisation | 77.9 % | +0.3 ± 0.6 | 7.3 % | 0.3 % |
 | + Predictive spares & fast lateral | 77.7 % | -0.2 ± 0.5 | 7.6 % | 0.3 % |
 | + Bundle engine changes into checks | 77.6 % | -0.1 ± 0.4 | 7.6 % | 0.3 % |
-| + No-Fault-Found screening | 77.9 % | +0.3 ± 0.7 | 7.0 % | 0.3 % |
-| + Scheduled work while awaiting spares | 78.1 % | +0.2 ± 0.3 | 6.8 % | 0.3 % |
+| + No-Fault-Found screening | 77.7 % | +0.1 ± 0.7 | 7.2 % | 0.3 % |
+| + Scheduled work while awaiting spares | 77.9 % | +0.1 ± 0.6 | 7.1 % | 0.3 % |
 
-**Total: +20.4 ± 0.6 percentage points ≈ 13 more mission-capable aircraft every day from the same 64-aircraft fleet.**
+**Total: +20.2 ± 0.5 percentage points ≈ 13 more mission-capable aircraft every day from the same 64-aircraft fleet.**
 
 Readiness-based sparing reallocates the *same* inventory budget (₹172 crore): modelled supply availability 83% → 96%. Fixing spares alone moves the bottleneck to the hangar (aircraft queue for a bay); the phase-flow plan removes it.
 
@@ -59,23 +60,23 @@ Each row changes one assumption of the notional fleet and re-measures current pr
 
 | Assumption | Change | Current practice | With TATPAR | Gain (95 % CI) | ≈ aircraft / day |
 |---|---|---|---|---|---|
-| Reference | As modelled | 57.7 % | 78.1 % | **+20.4 ± 0.6 pts** | 13.1 |
-| LRU failure rate | +30 % failures | 48.9 % | 74.9 % | **+26.1 ± 0.8 pts** | 16.7 |
-| LRU failure rate | −30 % failures | 64.0 % | 80.2 % | **+16.3 ± 0.5 pts** | 10.4 |
-| Repair turnaround (BRD / HAL) | +30 % slower | 52.7 % | 74.2 % | **+21.6 ± 0.7 pts** | 13.8 |
-| Repair turnaround (BRD / HAL) | −30 % faster | 61.2 % | 81.3 % | **+20.1 ± 0.6 pts** | 12.9 |
-| Spares inventory | −40 % stock | 55.3 % | 76.5 % | **+21.1 ± 0.6 pts** | 13.5 |
-| Spares inventory | +40 % stock | 59.4 % | 78.4 % | **+19.0 ± 0.5 pts** | 12.2 |
-| Flying task | +20 % sorties | 50.3 % | 71.7 % | **+21.4 ± 0.6 pts** | 13.7 |
-| Flying task | −20 % sorties | 60.2 % | 83.4 % | **+23.2 ± 0.4 pts** | 14.8 |
-| Hangar capacity | 2 bays per squadron | 60.5 % | 77.9 % | **+17.4 ± 0.6 pts** | 11.1 |
-| Prognostic model error | risk under-predicted ×0.6 | 57.7 % | 78.1 % | **+20.4 ± 0.6 pts** | 13.1 |
-| Prognostic model error | risk over-predicted ×1.5 | 57.7 % | 78.1 % | **+20.4 ± 0.6 pts** | 13.1 |
-| Prognostic model error | NFF classifier half as sensitive | 57.7 % | 78.1 % | **+20.4 ± 0.5 pts** | 13.1 |
+| Reference | As modelled | 57.7 % | 77.9 % | **+20.2 ± 0.5 pts** | 12.9 |
+| LRU failure rate | +30 % failures | 48.9 % | 74.7 % | **+25.9 ± 0.6 pts** | 16.6 |
+| LRU failure rate | −30 % failures | 64.0 % | 79.9 % | **+16.0 ± 0.6 pts** | 10.2 |
+| Repair turnaround (BRD / HAL) | +30 % slower | 52.7 % | 73.9 % | **+21.2 ± 0.7 pts** | 13.6 |
+| Repair turnaround (BRD / HAL) | −30 % faster | 61.2 % | 81.1 % | **+20.0 ± 0.5 pts** | 12.8 |
+| Spares inventory | −40 % stock | 55.3 % | 76.6 % | **+21.2 ± 0.5 pts** | 13.6 |
+| Spares inventory | +40 % stock | 59.4 % | 78.5 % | **+19.1 ± 0.5 pts** | 12.2 |
+| Flying task | +20 % sorties | 50.3 % | 71.7 % | **+21.4 ± 0.7 pts** | 13.7 |
+| Flying task | −20 % sorties | 60.2 % | 83.3 % | **+23.1 ± 0.4 pts** | 14.8 |
+| Hangar capacity | 2 bays per squadron | 60.5 % | 78.3 % | **+17.7 ± 0.4 pts** | 11.4 |
+| Prognostic model error | risk under-predicted ×0.6 | 57.7 % | 78.1 % | **+20.4 ± 0.5 pts** | 13.0 |
+| Prognostic model error | risk over-predicted ×1.5 | 57.7 % | 78.3 % | **+20.6 ± 0.5 pts** | 13.2 |
+| Prognostic model error | NFF classifier half as sensitive | 57.7 % | 78.0 % | **+20.2 ± 0.5 pts** | 13.0 |
 | Prognostic model error | no prognostics at all (risk = 0) | 57.7 % | 77.7 % | **+20.0 ± 0.6 pts** | 12.8 |
-| Prognostic model error | spares sized on last year's demand | 57.7 % | 76.6 % | **+18.9 ± 0.6 pts** | 12.1 |
+| Prognostic model error | spares sized on last year's demand | 57.7 % | 76.7 % | **+18.9 ± 0.5 pts** | 12.1 |
 
-Across every change the gain stays between **+16.3** and **+26.1** points (reference +20.4), and its 95 % interval excludes zero in every row.
+Across every change the gain stays between **+16.0** and **+25.9** points (reference +20.2), and its 95 % interval excludes zero in every row.
 
 Reading the prognostic rows: over a whole year almost all of the gain comes from readiness-based sparing and the phase-flow plan, so biased or missing risk scores barely move the *average*. The models earn their keep in the short-horizon decisions instead — which aircraft to protect, which engine to change at the next phase, and P(meet) for a specific requirement (sections 1, 6).
 
@@ -83,21 +84,23 @@ Reading the prognostic rows: over a whole year almost all of the gain comes from
 
 Requirement: ≥9 mission-capable aircraft at Sqn A (HF) — Jodhpur from D+14 to D+17 with a 120% flying task.
 
-| Action | P(meet requirement) | Gain |
-|---|---|---|
-| Current practice | 12% | +0 pts |
-| Requirement-aware flying & maintenance plan | 18% | +7 pts |
-| Pre-position spares at Jodhpur | 36% | +18 pts |
-| Expedite critical repairs at BRD / HAL | 35% | -1 pts |
-| Consolidated cannibalisation + NFF screening | 52% | +17 pts |
+Predicted = Monte-Carlo from the models' beliefs (what the planner shows). Realised = the same actions replayed in futures drawn from the twin's hidden ground truth, which the models never see.
+
+| Action | P(meet) predicted | Gain | P(meet) realised in hidden truth | Gain |
+|---|---|---|---|---|
+| Current practice | 12% | +0 pts | 10% | +0 pts |
+| Requirement-aware flying & maintenance plan | 18% | +7 pts | 23% | +13 pts |
+| Pre-position spares at Jodhpur | 36% | +18 pts | 49% | +26 pts |
+| Expedite critical repairs at BRD / HAL | 35% | -1 pts | 48% | -2 pts |
+| Consolidated cannibalisation + NFF screening | 52% | +17 pts | 78% | +31 pts |
 
 ## 7. Federated learning across bases (engine RUL, NASA C-MAPSS)
 
-FedAvg across five bases with heterogeneous engines (NASA C-MAPSS subsets), including a data-poor Leh detachment with 8 engines; RMSE on each base's held-out official test engines. Only model weights leave a base.
+FedAvg across five bases with heterogeneous engines (NASA C-MAPSS subsets), including a data-poor Leh detachment with 8 engines; RMSE on each base's own held-out official test engines (Leh and Jodhpur use disjoint FD004 test engines). Only model weights and aggregate feature statistics leave a base; every regime gets the same local training steps and keeps its best checkpoint on the base's own validation engines.
 
 | Regime | Jodhpur | Pune | Tezpur | Thanjavur | Leh | Mean RMSE | Raw data leaves base? |
 |---|---|---|---|---|---|---|---|
-| Local only (each base alone) | 14.3 | 14.1 | 13.5 | 13.4 | 37.1 | **18.47** | No |
-| Federated (FedAvg, weights only) | 14.6 | 14.0 | 14.4 | 13.4 | 14.6 | **14.20** | No — weights only |
-| Federated + local fine-tune (personalised) | 14.7 | 13.1 | 13.6 | 13.4 | 15.3 | **14.00** | No — weights only |
-| Centralised (all raw data pooled) | 13.2 | 12.9 | 13.1 | 13.2 | 13.2 | **13.14** | Yes — all HUMS data |
+| Local only (each base alone) | 13.9 | 14.1 | 13.2 | 14.0 | 30.6 | **17.16** | No |
+| Federated (FedAvg, weights only) | 14.9 | 13.9 | 13.7 | 13.6 | 14.8 | **14.17** | No — weights and aggregate statistics only |
+| Federated + local fine-tune (personalised) | 13.8 | 13.6 | 12.9 | 13.4 | 15.0 | **13.76** | No — weights and aggregate statistics only |
+| Centralised (all raw data pooled) | 13.4 | 13.1 | 13.2 | 13.1 | 13.5 | **13.25** | Yes — all HUMS data |

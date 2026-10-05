@@ -11,13 +11,13 @@
 
 ## 1 · Readiness-backward planning (0:30–1:45) — 02 PLANNING CELL
 - The task reads as one sentence: **SQN-A to hold at least 9 aircraft every day from D+14 to D+17 at 1.2 × flying task**.
-- "Current practice meets it 12 % of the time." Walk up the **staircase**: flying & maintenance plan → pre-positioned spares → depot expedite → consolidated cannibalisation & No-Fault-Found screening → 52 % (depot expedite adds nothing for this requirement; the staircase shows that honestly).
+- "Current practice meets it 12 % of the time." Walk up the **staircase**: flying & maintenance plan → pre-positioned spares → depot expedite → consolidated cannibalisation & No-Fault-Found screening → 52 % (depot expedite adds nothing for this requirement; the staircase shows that honestly). "Replayed in the hidden ground truth the models never see, the same plan meets the task 78 % of the time — our estimates are conservative."
 - "Each step is measured on the same random futures, so the gain belongs to that action."
 - Read the **operation order**: phase checks moved, engines capped at their conformal lower bound, which spares move where. Click **APPROVE**: stamp, ledger entry, and one **order per action** appears in the tracker, routed to its owner (SENGO, LOG OFFR, DEPOT MGR). "Approval is the start of the loop: the logistics officer marks the transfers actioned, and each change is signed into the ledger." 
 
 ## 2 · Why readiness is lost (1:45–2:30) — 06 AFTER-ACTION
 - Waterfall: awaiting spares is the biggest loss. Readiness **waves** (▼): aircraft converge on the same phase point and queue for the hangar.
-- Lever staircase: **readiness-based sparing at the same ₹172 crore** +10 pts, but the queue moves to the hangar; the **phase-flow plan** +10 pts removes it. "57.7 % → 78.1 %, about 13 more aircraft every day, same fleet, same budget." Then the robustness panel: "change any assumption — failure rates, repair times, stock, flying task — and the gain stays between +16 and +26 points."
+- Lever staircase: **readiness-based sparing at the same ₹172 crore** +10 pts, but the queue moves to the hangar; the **phase-flow plan** +10 pts removes it. "57.7 % → 77.9 %, about 13 more aircraft every day, same fleet, same budget." Then the robustness panel: "change any assumption — failure rates, repair times, stock, flying task — and the gain stays between +16 and +26 points."
 
 ## 3 · The flight line (2:30–3:10) — 03 FLIGHT LINE
 - Phase track: click **TODAY → +180 D · CURRENT** and the aircraft slide into a bunch at the bay; **+180 D · TATPAR** spreads them back over the ideal ticks.
@@ -36,5 +36,5 @@
 - The Hinglish entry "HYD PRESSURE LH SYSTEM MEIN FLUCTUATION…" is already coded: **ATA 29** stamp, removal decision, what fixed it before, similar entries from this fleet and MaintNet.
 
 ## 7 · Trust & close (4:40–5:00) — 08 PROOF + DUTY OFFR
-- Federated learning: the Leh detachment with 8 engines of history falls from 37 to ~15 cycles error without sharing raw data. Decision ledger: **CHAIN VERIFIED**, both approvals from this demo listed.
+- Federated learning: the Leh detachment with 8 engines of history falls from about 31 to 15 cycles of error, sharing only model weights and aggregate statistics, never engine records. Decision ledger: **CHAIN VERIFIED**, both approvals from this demo listed.
 - Open **DUTY OFFR**, ask "Status of HF-114". "Runs fully offline on a laptop or edge server. Public and synthetic data only. TATPAR — *tatpar*, ever-ready."

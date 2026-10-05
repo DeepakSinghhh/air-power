@@ -89,7 +89,8 @@ export default function PlannerPage() {
       <div className={`grid grid-cols-1 xl:grid-cols-[1.15fr_1fr] gap-4 mt-4 ${busy ? "opacity-50" : ""}`}>
         <Panel title={`Probability of meeting the task: ${fmtPct(first.p_meet)} → ${fmtPct(last.p_meet)}`} meta={`${res.reps} FUTURES · ${res.window.start_date} → ${res.window.end_date}`}>
           <Staircase steps={steps} />
-          <div className="foot">Each tread is P(at least {res.min_mc} MC on every day of the window) after adding that action to all before it. Same random futures for every step.</div>
+          <div className="foot">Each tread is P(at least {res.min_mc} MC on every day of the window) after adding that action to all before it. Same random futures for every step.
+            {first.p_meet_truth != null && <> <b>Check against the hidden ground truth</b> (futures the models never see): {fmtPct(first.p_meet_truth)} → {fmtPct(last.p_meet_truth)}.</>}</div>
         </Panel>
         <Panel title={`${res.squadron} readiness forecast`} meta="MEDIAN + P10–P90">
           <Fan res={res} />

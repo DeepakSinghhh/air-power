@@ -66,17 +66,26 @@ class SurvivalModels:
             rho = float(np.exp(aft.params_["rho_"]["Intercept"]))
             self.params[lru] = {"b0": b0, "b": b, "rho": rho, "mu": mu}
             ci = concordance_index(df["hours"], aft.predict_median(df[COVS]), df["event"])
+            # held-out concordance: refit without a quarter of the serials, score those serials
+            held = (g["serial"].to_numpy() % 4) == 0
+            ci_ho = None
+            if held.sum() >= 10 and df.loc[held, "event"].sum() >= 3 and df.loc[~held, "event"].sum() >= 10:
+                a2 = WeibullAFTFitter(penalizer=0.01).fit(df[~held], duration_col="hours", event_col="event", entry_col="entry")
+                ci_ho = float(concordance_index(df.loc[held, "hours"], a2.predict_median(df.loc[held, COVS]), df.loc[held, "event"]))
             rows.append({"lru": lru, "events": int(df["event"].sum()), "censored": int((1 - df["event"]).sum()),
-                         "c_index": float(ci), "rho_hat": rho, "beta_true": LRU_TYPES[lru].beta})
+                         "c_index": float(ci), "c_index_heldout": ci_ho, "rho_hat": rho, "beta_true": LRU_TYPES[lru].beta})
         tab = pd.DataFrame(rows)
         self.metrics = {
-            "per_lru": tab.to_dict("records"),
-            "mean_c_index": float(tab["c_index"].mean()),
+            "per_lru": tab.astype(object).where(tab.notna(), None).to_dict("records"),   # None, not NaN, for JSON
+            "mean_c_index": float(tab["c_index"].mean()),                       # in-sample
+            "mean_c_index_heldout": float(tab["c_index_heldout"].dropna().mean()),  # serials not used to fit
+            "heldout_lrus": int(tab["c_index_heldout"].notna().sum()),
             "shape_mae": float((tab["rho_hat"] - tab["beta_true"]).abs().mean()),
             "life_recovery": self._life_recovery(),
         }
         if verbose:
-            print(f"survival: {len(tab)} LRU models, mean C-index {self.metrics['mean_c_index']:.3f}, "
+            print(f"survival: {len(tab)} LRU models, mean C-index {self.metrics['mean_c_index']:.3f} "
+                  f"(held-out {self.metrics['mean_c_index_heldout']:.3f}), "
                   f"shape MAE {self.metrics['shape_mae']:.2f}, life R² {self.metrics['life_recovery']['r2_log']:.3f}")
         return self
 

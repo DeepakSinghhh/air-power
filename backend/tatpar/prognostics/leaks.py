@@ -53,6 +53,14 @@ def nff_features(snags: pd.DataFrame, removals: pd.DataFrame | None = None) -> p
     return X
 
 
+def _threshold(score: np.ndarray, y: np.ndarray, max_fpr: float = 0.08) -> float:
+    """Lowest threshold whose false-positive rate is at most ``max_fpr``."""
+    for th in np.linspace(0.05, 0.95, 91):
+        if ((score >= th) & (y == 0)).sum() / max(1, (y == 0).sum()) <= max_fpr:
+            return float(th)
+    return 0.95
+
+
 @dataclass
 class NFFModel:
     model: lgb.LGBMClassifier | None = None
@@ -65,22 +73,24 @@ class NFFModel:
         X = nff_features(snags)
         y = (snags["finding"] == "NFF").astype(int).to_numpy()
         params = dict(n_estimators=300, learning_rate=0.05, num_leaves=15, min_child_samples=20, verbose=-1)
+        groups = snags["tail"].to_numpy()
         oof = np.zeros(len(y))
-        for tr, te in GroupKFold(n_splits=5).split(X, y, groups=snags["tail"]):
+        hit = np.zeros(len(y), dtype=bool)        # flagged at a threshold chosen without the scored fold
+        for tr, te in GroupKFold(n_splits=5).split(X, y, groups=groups):
             m = lgb.LGBMClassifier(**params).fit(X.iloc[tr], y[tr], categorical_feature=["lru"])
             oof[te] = m.predict_proba(X.iloc[te])[:, 1]
+            inner = np.zeros(len(tr))
+            for itr, ite in GroupKFold(n_splits=4).split(X.iloc[tr], y[tr], groups=groups[tr]):
+                mi = lgb.LGBMClassifier(**params).fit(X.iloc[tr[itr]], y[tr[itr]], categorical_feature=["lru"])
+                inner[ite] = mi.predict_proba(X.iloc[tr[ite]])[:, 1]
+            hit[te] = oof[te] >= _threshold(inner, y[tr])
         auc = roc_auc_score(y, oof)
-        # threshold: keep false positives (true failures sent to re-test) at <= 8 %
-        ths = np.linspace(0.05, 0.95, 91)
-        best = 0.5
-        for th in ths:
-            fpr = ((oof >= th) & (y == 0)).sum() / max(1, (y == 0).sum())
-            if fpr <= 0.08:
-                best = th
-                break
-        tpr = ((oof >= best) & (y == 1)).sum() / max(1, (y == 1).sum())
-        fpr = ((oof >= best) & (y == 0)).sum() / max(1, (y == 0).sum())
-        prec = ((oof >= best) & (y == 1)).sum() / max(1, (oof >= best).sum())
+        # operating point: keep false positives (true failures sent to re-test) at <= 8 %. The rates reported
+        # (and used by the twin) are nested: each fold's threshold is chosen on the other folds only.
+        best = _threshold(oof, y)
+        tpr = (hit & (y == 1)).sum() / max(1, (y == 1).sum())
+        fpr = (hit & (y == 0)).sum() / max(1, (y == 0).sum())
+        prec = (hit & (y == 1)).sum() / max(1, hit.sum())
         self.model = lgb.LGBMClassifier(**params).fit(X, y, categorical_feature=["lru"])
         self.threshold = float(best)
         self.metrics = {"n": int(len(y)), "nff_rate": float(y.mean()), "auc": float(auc), "threshold": float(best),

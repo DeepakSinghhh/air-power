@@ -35,15 +35,15 @@ All boards, day and night: [docs/screenshots](docs/screenshots).
 
 | What | Result | Data |
 |---|---|---|
-| Fleet availability, one year, full policy vs current practice | **57.7 % → 78.1 % mission-capable (+20.4 ± 0.6 pts ≈ 13 more aircraft every day)** — same fleet, same spares budget | Notional 64-aircraft fleet, 24 hidden-truth futures, common random numbers |
+| Fleet availability, one year, full policy vs current practice | **57.7 % → 77.9 % mission-capable (+20.2 ± 0.5 pts ≈ 13 more aircraft every day)** — same fleet, same spares budget | Notional 64-aircraft fleet, 24 hidden-truth futures, common random numbers |
 | Does it survive different assumptions? | gain stays **+16 to +26 pts** with failure rates ±30 %, repair times ±30 %, stock ±40 %, flying task ±20 %, two bays, biased or missing prognostics; 95 % CI excludes zero in all 15 cases | Notional, [sensitivity table](docs/04-evaluation.md#5b-does-the-gain-survive-different-assumptions-one-year-24-hidden-truth-futures-each) |
 | Readiness-based sparing (same ₹172 crore inventory) | modelled supply availability 83 % → 96 %; +10 pts mission-capable in the twin | Notional |
 | Phase-flow flight & maintenance plan (CP-SAT) | removes hangar queues (awaiting-bay 9.8 % → 0.2 %); +10 pts | Notional |
-| Readiness-backward planner (≥ 9 MC at Jodhpur, D+14–17, surge ×1.2) | P(meet) 12 % → 52 % | Notional |
+| Readiness-backward planner (≥ 9 MC at Jodhpur, D+14–17, surge ×1.2) | P(meet) 12 % → 52 % as the planner predicts it; replayed in the hidden ground truth the models never see, 10 % → 78 % (the estimates are conservative) | Notional |
 | Engine RUL (LightGBM quantile + conformal) | RMSE 12.8 / 13.9 / 13.1 / 14.0 cycles on FD001–FD004; 90 % interval coverage 82.7 % → **90.4 %** after conformal calibration | NASA C-MAPSS official test sets |
 | Readiness forecast calibration | P10–P90 band contains 84 % of true outcomes (nominal 80 %) | Notional |
-| Federated learning across 5 bases | data-poor Leh detachment: RMSE 37.1 → 14.6 cycles without sharing raw data | NASA C-MAPSS |
-| No-Fault-Found predictor / rogue units | AUC 0.81 (47 % of NFF caught at 8 % false re-tests) / 100 % precision | Notional |
+| Federated learning across 5 bases | data-poor Leh detachment (8 engines): RMSE 30.6 → 14.8 cycles; only model weights and aggregate feature statistics leave a base, each base is scored on its own test engines, and the local-only baseline gets the same training steps | NASA C-MAPSS |
+| No-Fault-Found predictor / rogue units | AUC 0.81 (46 % of NFF caught at 8 % false re-tests, threshold chosen by nested CV) / 100 % precision | Notional |
 | ATA auto-coding of real logbook text | agrees with **what was actually repaired 75 %** of the time (keyword rule 69 %, majority class 64 %); not much better than the keywords once they are removed — see honesty notes | MaintNet aviation logbook |
 
 Full, auto-generated numbers: [docs/04-evaluation.md](docs/04-evaluation.md). **All fleet figures come from a notional fleet simulated by the TATPAR Fleet Twin — they are not IAF results.**

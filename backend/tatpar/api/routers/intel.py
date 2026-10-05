@@ -224,8 +224,23 @@ def _check(kind: str, df: pd.DataFrame) -> dict:
     return out
 
 
+def _finite(x):
+    """NaN / inf -> None so the model cards are valid JSON."""
+    if isinstance(x, dict):
+        return {k: _finite(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_finite(v) for v in x]
+    if isinstance(x, float) and not np.isfinite(x):
+        return None
+    return x
+
+
 @router.get("/models")
 def models():
+    return _finite(_models())
+
+
+def _models():
     ctx = get_ctx()
     m = ctx.metrics
     fc = ctx.bench("forecast") or {}
