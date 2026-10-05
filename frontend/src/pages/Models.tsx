@@ -66,8 +66,11 @@ export default function ModelsPage() {
       </div>
       {fl && (
         <Card title="Federated learning across bases" sub={fl.description}>
-          <table className="tbl"><thead><tr><th>Training regime</th><th className="text-right">RMSE (cycles)</th><th>Raw data leaves base?</th></tr></thead>
-            <tbody>{fl.results.map((r: any) => <tr key={r.regime}><td>{r.regime}</td><td className="text-right tabular">{fmt(r.rmse, 2)}</td><td>{r.data_moved}</td></tr>)}</tbody></table>
+          <table className="tbl"><thead><tr><th>Training regime</th>{Object.keys(fl.clients).map((b) => <th key={b} className="text-right">{b}</th>)}<th className="text-right">Mean RMSE</th><th>Raw data leaves base?</th></tr></thead>
+            <tbody>{fl.results.map((r: any) => <tr key={r.regime}><td>{r.regime}</td>
+              {Object.keys(fl.clients).map((b) => <td key={b} className="text-right tabular">{fmt(r.per_base[b], 1)}</td>)}
+              <td className="text-right tabular font-semibold">{fmt(r.rmse, 2)}</td><td>{r.data_moved}</td></tr>)}</tbody></table>
+          <div className="text-[12px] secondary mt-2">RMSE in cycles on each base's held-out NASA test engines. Leh (8 engines of history) gains most: its error falls from {fmt(fl.results[0].per_base.Leh, 1)} to {fmt(fl.results[1].per_base.Leh, 1)} without sharing a single sensor record.</div>
         </Card>
       )}
       <Card title="Decision audit log" sub="Append-only, SHA-256 hash-chained. Any edit to an earlier entry breaks verification."

@@ -43,12 +43,12 @@ Belief-mode forecasts (models only) vs outcomes drawn from the hidden truth: the
 | + Readiness-based sparing (same budget) | 67.8 % | +10.1 ± 0.5 | 7.9 % | 9.8 % |
 | + Phase-flow flying plan | 77.6 % | +9.8 ± 0.6 | 7.5 % | 0.2 % |
 | + Consolidated cannibalisation | 77.9 % | +0.3 ± 0.6 | 7.3 % | 0.3 % |
-| + Predictive spares & fast lateral | 77.4 % | -0.5 ± 0.5 | 7.8 % | 0.3 % |
-| + Bundle engine changes into checks | 77.7 % | +0.2 ± 0.4 | 7.6 % | 0.3 % |
-| + No-Fault-Found screening | 77.8 % | +0.2 ± 0.7 | 7.1 % | 0.3 % |
-| + Scheduled work while awaiting spares | 77.9 % | +0.1 ± 0.5 | 6.9 % | 0.3 % |
+| + Predictive spares & fast lateral | 77.5 % | -0.4 ± 0.5 | 7.7 % | 0.3 % |
+| + Bundle engine changes into checks | 77.7 % | +0.2 ± 0.4 | 7.5 % | 0.3 % |
+| + No-Fault-Found screening | 77.9 % | +0.2 ± 0.7 | 7.0 % | 0.3 % |
+| + Scheduled work while awaiting spares | 78.0 % | +0.0 ± 0.5 | 6.9 % | 0.3 % |
 
-**Total: +20.2 ± 0.5 percentage points ≈ 13 more mission-capable aircraft every day from the same 64-aircraft fleet.**
+**Total: +20.3 ± 0.5 percentage points ≈ 13 more mission-capable aircraft every day from the same 64-aircraft fleet.**
 
 Readiness-based sparing reallocates the *same* inventory budget (₹172 crore): modelled supply availability 83% → 96%. Fixing spares alone moves the bottleneck to the hangar (aircraft queue for a bay); the phase-flow plan removes it.
 
@@ -59,7 +59,18 @@ Requirement: ≥9 mission-capable aircraft at Sqn A (HF) — Jodhpur from D+14 t
 | Action | P(meet requirement) | Gain |
 |---|---|---|
 | Current practice | 12% | +0 pts |
-| Requirement-aware flying & maintenance plan | 20% | +8 pts |
-| Pre-position spares at Jodhpur | 34% | +14 pts |
-| Expedite critical repairs at BRD / HAL | 35% | +1 pts |
-| Consolidated cannibalisation + NFF screening | 43% | +8 pts |
+| Requirement-aware flying & maintenance plan | 13% | +2 pts |
+| Pre-position spares at Jodhpur | 29% | +16 pts |
+| Expedite critical repairs at BRD / HAL | 31% | +2 pts |
+| Consolidated cannibalisation + NFF screening | 44% | +13 pts |
+
+## 7. Federated learning across bases (engine RUL, NASA C-MAPSS)
+
+FedAvg across five bases with heterogeneous engines (NASA C-MAPSS subsets), including a data-poor Leh detachment with 8 engines; RMSE on each base's held-out official test engines. Only model weights leave a base.
+
+| Regime | Jodhpur | Pune | Tezpur | Thanjavur | Leh | Mean RMSE | Raw data leaves base? |
+|---|---|---|---|---|---|---|---|
+| Local only (each base alone) | 14.3 | 14.1 | 13.5 | 13.4 | 37.1 | **18.47** | No |
+| Federated (FedAvg, weights only) | 14.6 | 14.0 | 14.4 | 13.4 | 14.6 | **14.20** | No — weights only |
+| Federated + local fine-tune (personalised) | 14.7 | 13.1 | 13.6 | 13.4 | 15.3 | **14.00** | No — weights only |
+| Centralised (all raw data pooled) | 13.2 | 12.9 | 13.1 | 13.2 | 13.2 | **13.14** | Yes — all HUMS data |

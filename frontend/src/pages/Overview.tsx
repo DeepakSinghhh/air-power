@@ -27,7 +27,7 @@ export default function Overview() {
       },
     }),
     xAxis: xCat(t, days, { axisLabel: { color: t["text-muted"], interval: 9 } }),
-    yAxis: yVal(t, { name: "Mission-capable aircraft", min: 20, max: 52 }),
+    yAxis: yVal(t, { min: 20, max: 52 }),
     series: [...fanSeries("Current practice", t.baseline, fb, "b"), ...fanSeries("With TATPAR", t["series-1"], ft, "t")],
   };
 
@@ -66,7 +66,7 @@ export default function Overview() {
             </div>
           </div>
         </div>
-        <Card title="Readiness forecast — next 60 days" sub={cal ? `Shaded: P10–P90. Calibration check: the 80 % band contained ${fmtPct(cal.coverage_p10_p90)} of true outcomes.` : undefined}>
+        <Card title="Readiness forecast — mission-capable aircraft, next 60 days" sub={cal ? `Shaded: P10–P90. Calibration check: the 80 % band contained ${fmtPct(cal.coverage_p10_p90)} of true outcomes. Weekly rhythm: aircraft recover at weekends.` : undefined}>
           {fanOpt && <Chart option={fanOpt} height={300} />}
         </Card>
       </div>

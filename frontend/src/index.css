@@ -177,6 +177,9 @@ table.tbl td {
   border-bottom: 1px solid var(--grid);
   vertical-align: top;
 }
+table.tbl td:first-child {
+  white-space: nowrap;
+}
 table.tbl tr:hover td {
   background: var(--surface-2);
 }

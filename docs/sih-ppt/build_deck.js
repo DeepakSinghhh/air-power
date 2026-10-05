@@ -214,24 +214,24 @@ async function icon(Comp, color, size = 256) {
   s = pres.addSlide({ masterName: "CONTENT", sectionTitle: "Feasibility" });
   s.addText("Feasibility & Viability", { placeholder: "title" });
   const stats = [
-    ["100 %", "public + synthetic data — no classified inputs needed to build or demo"],
-    ["0", "cloud dependencies at runtime — runs air-gapped on a CPU laptop or edge server"],
-    ["Proven", "methods from published air-force research (Hellenic, French, Finnish FMP; USAF sparing)"],
+    ["+20 pts", "mission-capable in the working prototype’s Fleet Twin: 57.7 → 78.0 %, same fleet and spares budget (notional data)"],
+    ["90 %", "calibrated engine-RUL interval coverage on NASA C-MAPSS test sets (82.7 % before conformal calibration)"],
+    ["0", "cloud dependencies — runs air-gapped on a CPU laptop or edge server; public + synthetic data only"],
   ];
   let sy = 1.3;
   stats.forEach(([big, lab], i) => {
-    card(s, "stat-" + i, 0.5, sy, 3.9, 1.62);
-    s.addText(big, { x: 0.75, y: sy + 0.12, w: 3.4, h: 0.7, fontSize: 36, bold: true, color: i === 2 ? C.accent2 : C.accent1, margin: 0, isTextBox: true, objectName: "stat-big-" + i });
-    s.addText(lab, { x: 0.75, y: sy + 0.82, w: 3.45, h: 0.7, fontSize: 13, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "stat-label-" + i });
-    sy += 1.77;
+    card(s, "stat-" + i, 0.5, sy, 3.9, 1.72);
+    s.addText(big, { x: 0.75, y: sy + 0.12, w: 3.4, h: 0.7, fontSize: 36, bold: true, color: i === 0 ? C.accent2 : C.accent1, margin: 0, isTextBox: true, objectName: "stat-big-" + i });
+    s.addText(lab, { x: 0.75, y: sy + 0.82, w: 3.45, h: 0.82, fontSize: 13, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "stat-label-" + i });
+    sy += 1.84;
   });
-  const hdr = (t) => ({ text: t, options: { bold: true, color: HEX.lt1, fill: { color: HEX.dk2 }, fontSize: 14 } });
+  const hdr = (t) => ({ text: t, options: { bold: true, color: HEX.lt1, fill: { color: HEX.dk2 }, fontSize: 13 } });
   const risks = [
     ["No access to real IAF data", "Public datasets + synthetic fleet with hidden ground truth; adapters for IMMOLS / e-MMS exports"],
     ["Trust in AI recommendations", "Calibrated intervals, explanations, human approval, hash-chained audit log"],
     ["Classified, air-gapped networks", "Fully offline; federated learning shares only model weights"],
-    ["Legacy and paper records", "Common data model (S5000F / ATA), CSV/Excel adapters, data-quality scores"],
-    ["Optimisation run-time at scale", "Rolling horizon, warm start, time-limited CP-SAT, per-squadron decomposition"],
+    ["Legacy and paper records", "Common data model (S5000F / ATA), CSV adapters, data-quality scores"],
+    ["Optimisation run-time", "CP-SAT plans a squadron in ~1–2 s; rolling horizon, per-squadron decomposition"],
   ];
   s.addTable(
     [[hdr("Challenge / risk"), hdr("Mitigation built into TATPAR")],
@@ -239,16 +239,18 @@ async function icon(Comp, color, size = 256) {
         { text: a, options: { bold: true, color: HEX.dk1, fill: { color: i % 2 ? HEX.lt1 : HEX.lt2 } } },
         { text: b, options: { color: HEX.dk2, fill: { color: i % 2 ? HEX.lt1 : HEX.lt2 } } },
       ])],
-    { x: 4.7, y: 1.3, w: 8.13, colW: [2.75, 5.38], fontSize: 13, fontFace: "Calibri", rowH: 0.6, border: { type: "solid", pt: 0.5, color: "D5DEE8" }, valign: "middle", margin: 0.08, objectName: "risk-table" }
+    { x: 4.7, y: 1.3, w: 8.13, colW: [2.6, 5.53], fontSize: 12, fontFace: "Calibri", rowH: 0.44, border: { type: "solid", pt: 0.5, color: "D5DEE8" }, valign: "middle", margin: 0.06, objectName: "risk-table" }
   );
-  s.addText("Path to deployment", { x: 4.7, y: 5.3, w: 5, h: 0.4, fontSize: 16, bold: true, color: C.text1, margin: 0, isTextBox: true, objectName: "path-head" });
-  const path4 = ["SIH prototype", "Pilot on one squadron’s historical exports", "BRD + IMMOLS integration", "Command-wide rollout"];
-  path4.forEach((t, i) => {
-    const x = 4.7 + i * 2.08;
-    s.addShape(pres.shapes.OVAL, { x, y: 5.85, w: 0.42, h: 0.42, fill: { color: i === 0 ? C.accent1 : C.text2 }, line: { color: i === 0 ? C.accent1 : C.text2, width: 0 }, objectName: "path-dot-" + i });
-    s.addText(String(i + 1), { x, y: 5.85, w: 0.42, h: 0.42, fontSize: 13, bold: true, color: i === 0 ? C.text1 : C.background1, align: "center", valign: "middle", margin: 0, isTextBox: true, objectName: "path-num-" + i });
-    s.addText(t, { x: x + 0.5, y: 5.685, w: 1.55, h: 0.75, fontSize: 12, color: C.text2, margin: 0, valign: "middle", isTextBox: true, objectName: "path-text-" + i });
+  const shots = [["shot-planner.png", "Readiness planner"], ["shot-flow.png", "CP-SAT flight & maintenance plan"], ["shot-aircraft.png", "Engine RUL + module attribution"]];
+  shots.forEach(([f, cap], i) => {
+    const x = 4.7 + i * 2.765;
+    s.addImage({ path: path.join(__dirname, f), x, y: 4.25, w: 2.6, h: 1.625, objectName: "shot-" + i });
+    s.addText(cap, { x, y: 5.92, w: 2.6, h: 0.3, fontSize: 11, color: C.accent6, margin: 0, isTextBox: true, objectName: "shot-cap-" + i });
   });
+  s.addText([
+    { text: "Working prototype built. ", options: { bold: true, color: C.text1 } },
+    { text: "Path to deployment: SIH prototype → pilot on one squadron’s historical exports → BRD + IMMOLS integration → command-wide rollout.", options: { color: C.text2 } },
+  ], { x: 4.7, y: 6.3, w: 8.13, h: 0.55, fontSize: 12, margin: 0, valign: "top", isTextBox: true, objectName: "path" });
   s.addNotes("Feasible today: every building block exists in open-source tooling; the novelty is in combining them around readiness.");
 
   // ───────────── Slide 5 · Impact ─────────────
@@ -258,7 +260,7 @@ async function icon(Comp, color, size = 256) {
   const big3 = [
     ["~40 %", "of fighters reported unserviceable at any time (post-Op Sindoor commentary)", C.accent1],
     ["20–70 %", "of military avionics removals end as No-Fault-Found — wasted spares and repair slots", C.accent4],
-    ["≈ 5–6", "more mission-capable fighters for every +1 point of availability on a ~550-fighter fleet (illustrative)", C.accent2],
+    ["≈ 13", "more aircraft mission-capable every day from a 64-aircraft fleet in the prototype twin — same spares budget (notional data)", C.accent2],
   ];
   big3.forEach(([n, l, col], i) => {
     const x = 0.5 + i * 4.18;
@@ -296,7 +298,7 @@ async function icon(Comp, color, size = 256) {
     });
     by += 0.82;
   }
-  s.addNotes("Context figures are from open sources (see references). The +1 point arithmetic is illustrative: 1 % of ~550 fighters.");
+  s.addNotes("The first two figures are from open sources (see references). The third is measured in the TATPAR prototype on a notional fleet: +20.3 ± 0.5 points over one year, 24 hidden-truth futures.");
 
   // ───────────── Slide 6 · References ─────────────
   pres.addSection({ title: "References" });

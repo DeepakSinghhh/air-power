@@ -21,6 +21,7 @@ from ..optimize.advisors import cannibalisation_advice, expedite_candidates, tra
 from ..optimize.fmp import phase_ladder, plan_fleet
 from ..optimize.requirement import plan_requirement
 from ..optimize.sparing import recommend, stock_override_from
+from ..federated import fedavg
 from ..prognostics.belief import Belief
 from ..twin.kpis import forecast_waterfall, history_waterfall, monthly_mc, pareto_causes
 from ..twin.montecarlo import forecast
@@ -143,6 +144,7 @@ def run(quick: bool = False) -> dict:
                            DEMO_REQ["surge"], reps=80 if quick else 120, nff_tpr=nff["tpr"], nff_fpr=nff["fpr"])
     _save("requirement_demo", req)
     _save("environment", base_table())
+    fed = fedavg.run(rounds=80 if quick else 200, verbose=True)
 
     summary = {
         "elapsed_s": time.time() - t0,
@@ -151,6 +153,7 @@ def run(quick: bool = False) -> dict:
         "requirement": [(s["label"], round(s["p_meet"], 2)) for s in req["steps"]],
         "rbs": {"budget_lakh": rbs_p["budget_lakh"], "A_current": rbs_p["availability_current"],
                 "A_rbs": rbs_p["availability_rbs"]},
+        "federated": {r["regime"]: round(r["rmse"], 2) for r in fed["results"]},
     }
     _save("summary", summary)
     write_evaluation_doc(metrics)
@@ -240,6 +243,17 @@ def write_evaluation_doc(metrics: dict) -> None:
     ]
     for st_ in rq["steps"]:
         lines.append(f"| {st_['label']} | {st_['p_meet']:.0%} | {st_['gain']*100:+.0f} pts |")
+    fp = BENCH_DIR / "federated.json"
+    if fp.exists():
+        fd = json.loads(fp.read_text())
+        bases = list(fd["clients"])
+        lines += ["", "## 7. Federated learning across bases (engine RUL, NASA C-MAPSS)", "",
+                  fd["description"], "",
+                  "| Regime | " + " | ".join(bases) + " | Mean RMSE | Raw data leaves base? |",
+                  "|---|" + "---|" * len(bases) + "---|---|"]
+        for r in fd["results"]:
+            lines.append(f"| {r['regime']} | " + " | ".join(f"{r['per_base'][b]:.1f}" for b in bases) +
+                         f" | **{r['rmse']:.2f}** | {r['data_moved']} |")
     lines.append("")
     (REPO_DIR / "docs" / "04-evaluation.md").write_text("\n".join(lines))
 

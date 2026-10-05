@@ -1,0 +1,14 @@
+services:
+  tatpar:
+    build:
+      context: .
+      args:
+        QUICK: "0"          # set to "1" for a faster build with fewer Monte-Carlo replications
+    image: tatpar:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Optional local LLM for the copilot (Ollama-compatible). Leave unset for the deterministic router.
+      TATPAR_LLM_URL: ${TATPAR_LLM_URL:-}
+      TATPAR_LLM_MODEL: ${TATPAR_LLM_MODEL:-}
+    restart: unless-stopped
