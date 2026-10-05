@@ -114,7 +114,7 @@ Development: `make dev` (API on :8000, Vite on :5173 with hot reload). Tests: `m
 
 **Optional local LLM for the copilot:** set `TATPAR_LLM_URL=http://localhost:11434/api/chat` and `TATPAR_LLM_MODEL=<model>` (Ollama-compatible). Without it, the copilot uses a deterministic tool router — still offline, still cited.
 
-**GPU notebooks (Colab):** [`notebooks/01_engine_rul_deep.ipynb`](notebooks/01_engine_rul_deep.ipynb) (1D-CNN + Transformer quantile RUL + conformal calibration), [`notebooks/02_federated_bases.ipynb`](notebooks/02_federated_bases.ipynb) (FedAvg / FedProx, Flower deployment).
+**Notebooks (Colab GPU; saved outputs are from CPU runs):** [`notebooks/01_engine_rul_deep.ipynb`](notebooks/01_engine_rul_deep.ipynb) — 1D-CNN + Transformer quantile RUL with conformal calibration; 8 CPU epochs give RMSE 15.6 cycles against 12.8–14.0 for the platform's LightGBM, with 90 % intervals calibrated to 90–93 % coverage. [`notebooks/02_federated_bases.ipynb`](notebooks/02_federated_bases.ipynb) — FedAvg / FedProx in PyTorch with the Flower deployment code (not run). Both are exploratory; the published numbers come from the platform code.
 
 ## Repository map
 

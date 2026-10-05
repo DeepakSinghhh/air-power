@@ -172,3 +172,7 @@ print("saved engine_rul_deep.pt")
 # hidden health parameters of each engine module. On Colab, download `N-CMAPSS_DS02-006.h5` from the
 # NASA Prognostics Data Repository and train a multi-task head (RUL + fan/LPC/HPC/HPT/LPT
 # efficiency/flow modifiers) to explain *which module* is degrading. Skipped by default (≈ 2.5 GB).
+
+# %% [markdown]
+# ## 6 · About the saved outputs
+# The outputs saved in this notebook come from a CPU run with `EPOCHS=8` (the default of 30 is meant for a Colab GPU). That run reaches RMSE 14.9–16.1 cycles (15.6 overall) on the official test sets, against 12.8–14.0 for the platform's LightGBM quantile model, so the platform keeps LightGBM. Conformal calibration brings the deep model's 90 % intervals to 90–93 % coverage on every subset, from 86–89 % raw. Run it longer on a GPU to compare properly.
