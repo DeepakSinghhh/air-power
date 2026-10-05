@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { dtg, usePersona } from "../components/Layout";
-import { Board, Chart, ErrorBox, Loading, Panel } from "../components/ui";
+import { OrderTracker } from "../components/Orders";
+import { Chart } from "../components/Chart";
+import { Board, ErrorBox, Loading, Panel } from "../components/ui";
 import { fmt, fmtPct, postJSON, useApi } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { endLabel, fanSeries, grid, tooltip, xCat, yVal } from "../lib/charts";
 import { useTheme } from "../lib/theme";
 
@@ -9,6 +12,7 @@ const SQNS = ["SQN-A", "SQN-B", "SQN-C", "SQN-D"];
 
 export default function PlannerPage() {
   const { persona } = usePersona();
+  const { can } = useAuth();
   const demo = useApi<any>("/api/requirement/demo");
   const [res, setRes] = useState<any>(null);
   const [form, setForm] = useState({ sqn: "SQN-A", start: 14, end: 17, min_mc: 9, surge: 1.2, reps: 80 });
@@ -33,13 +37,15 @@ export default function PlannerPage() {
   };
   const approve = async () => {
     const final = res.steps[res.steps.length - 1];
+    setErr(null);
     const e = await postJSON("/api/approve", {
-      persona, kind: "readiness_plan",
+      kind: "readiness_plan",
       summary: `${res.squadron}: ≥${res.min_mc} MC ${res.window.start_date}→${res.window.end_date}; P(meet) ${fmtPct(res.steps[0].p_meet)} → ${fmtPct(final.p_meet)}`,
       payload: { requirement: { squadron: res.squadron, window: res.window, min_mc: res.min_mc, surge: res.surge },
-                 actions: res.steps.map((s: any) => ({ lever: s.lever, gain: s.gain, details: s.details.length })) },
-    });
-    setApproved({ ...e, dtg: dtg(new Date()) });
+                 actions: res.steps.map((s: any) => ({ lever: s.lever, gain: s.gain, details: s.details.length })),
+                 orders: res.steps.slice(1).flatMap((s: any) => s.details.map((d: any) => ({ ...d, lever: s.lever }))) },
+    }).catch((x) => { setErr(String(x)); return null; });
+    if (e) setApproved({ ...e, dtg: dtg(new Date()) });
   };
 
   if (demo.error) return <ErrorBox error={demo.error} />;
@@ -95,17 +101,21 @@ export default function PlannerPage() {
             </div>
           ))}
           <div className="mt-3 flex flex-wrap items-end justify-between gap-4 min-h-[86px]">
-            <div><b>COMMAND.</b> FOR APPROVAL BY {persona}.</div>
+            <div><b>COMMAND.</b> FOR APPROVAL BY STN CDR.{err && <div style={{ color: "var(--crit)" }}>✕ {err}</div>}</div>
             {approved ? (
               <span className="stamp big red thump mr-6">
                 <b>APPROVED</b><span>{persona} · {approved.dtg}</span><span>LEDGER #{approved.seq} · {approved.hash.slice(0, 8)}</span>
+                {approved.orders && <span>{approved.orders.length} ORDERS ISSUED</span>}
               </span>
             ) : (
-              <button className="btn ink" onClick={approve}>APPROVE AS {persona}</button>
+              can("approve:readiness_plan")
+                ? <button className="btn ink" onClick={approve}>APPROVE AS {persona}</button>
+                : <span className="mono text-[12px] ink-3">SIGNED IN AS {persona} — ONLY STN CDR MAY APPROVE</span>
             )}
           </div>
         </div>
       </section>
+      <div className="mt-4"><OrderTracker refreshKey={approved?.seq ?? 0} /></div>
     </Board>
   );
 }

@@ -1,4 +1,5 @@
-import { Board, Chart, ErrorBox, Loading, Panel } from "../components/ui";
+import { Chart } from "../components/Chart";
+import { Board, ErrorBox, Loading, Panel } from "../components/ui";
 import { fmt, fmtPct, useApi } from "../lib/api";
 import { endLabel, grid, MONO, tooltip, xCat, yVal } from "../lib/charts";
 import { SQN_COLOR, STATE_CODE, STATE_LABEL, stateColor, useTheme } from "../lib/theme";
@@ -9,6 +10,7 @@ export default function LossPage() {
   const { tokens: t } = useTheme();
   const wf = useApi<any>("/api/waterfall");
   const lv = useApi<any>("/api/levers");
+  const sens = useApi<any>("/api/sensitivity");
   if (wf.error || lv.error) return <ErrorBox error={(wf.error || lv.error)!} />;
   if (!wf.data || !lv.data) return <Loading />;
   const hist = wf.data.history;
@@ -115,6 +117,7 @@ export default function LossPage() {
           <div className="foot">Under current practice aircraft converge on the same phase-check point and queue for the hangar, so readiness rises and falls in waves (▼). The phase-flow plan keeps the ladder staggered and removes them.</div>
         </Panel>
       </div>
+      {sens.data && <Robustness s={sens.data} />}
       <Panel title="Lever ledger" meta="Δ = PAIRED DIFFERENCE VS PREVIOUS ROW, 95 % CI" pad={false} className="mt-4">
         <table className="ledger"><thead><tr><th>Policy stack</th><th className="n">Serviceable</th><th className="n">Δ pts</th><th className="n">SPR share</th><th className="n">BAY share</th><th className="n">Sorties short / yr</th></tr></thead>
           <tbody>{L.map((r: any) => (<tr key={r.label}><td>{r.label}</td><td className="n">{fmtPct(r.mc, 1)}</td>
@@ -122,5 +125,46 @@ export default function LossPage() {
             <td className="n">{fmtPct(r.state_share.NMCS, 1)}</td><td className="n">{fmtPct(r.state_share.WAIT, 1)}</td><td className="n">{fmt(r.sortie_shortfall)}</td></tr>))}</tbody></table>
       </Panel>
     </Board>
+  );
+}
+
+/** Does the gain survive different assumptions? One row per changed assumption: current practice (grey)
+ *  and TATPAR (navy) on the same random futures, with the paired gain and its 95 % interval. */
+function Robustness({ s }: { s: any }) {
+  const lo = 0.4, hi = 0.9;
+  const X = (v: number) => `${((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * 100}%`;
+  let lastGroup = "";
+  return (
+    <Panel title="Does the gain hold? — change one assumption at a time" meta={`${s.reps} FUTURES PER ROW · MODELS NOT REFITTED`} className="mt-4">
+      <div className="grid grid-cols-[minmax(0,250px)_minmax(0,1fr)_120px] gap-x-4 items-center">
+        <div />
+        <div className="relative h-[16px] mono text-[10px] ink-3">
+          {[0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map((v) => <span key={v} className="absolute -translate-x-1/2" style={{ left: X(v) }}>{v * 100}%</span>)}
+        </div>
+        <div className="cond text-[12px] ink-3 text-right">GAIN (95 % CI)</div>
+        {s.rows.map((r: any) => {
+          const head = r.group !== lastGroup;
+          lastGroup = r.group;
+          return [
+            <div key={r.key + "l"} className={`text-[12.5px] py-[5px] ${head ? "border-t" : ""}`} style={{ borderColor: "var(--rule-2)" }}>
+              {head && <div className="cond text-[11.5px] ink-3">{r.group}</div>}{r.label}
+            </div>,
+            <div key={r.key + "c"} className={`relative h-full min-h-[26px] ${head ? "border-t" : ""}`} style={{ borderColor: "var(--rule-2)" }}>
+              {[0.5, 0.6, 0.7, 0.8].map((v) => <span key={v} className="absolute top-0 bottom-0 w-px" style={{ left: X(v), background: "var(--grid)" }} />)}
+              <span className="absolute top-1/2 h-[3px] -translate-y-1/2" style={{ left: X(r.baseline_mc), width: `calc(${X(r.tatpar_mc)} - ${X(r.baseline_mc)})`, background: "var(--tat)", opacity: 0.35 }} />
+              <span className="absolute top-1/2 w-[10px] h-[10px] -translate-x-1/2 -translate-y-1/2" style={{ left: X(r.baseline_mc), background: "var(--cur)" }} title={`Current practice ${(r.baseline_mc * 100).toFixed(1)} %`} />
+              <span className="absolute top-1/2 w-[10px] h-[10px] -translate-x-1/2 -translate-y-1/2" style={{ left: X(r.tatpar_mc), background: "var(--tat)" }} title={`With TATPAR ${(r.tatpar_mc * 100).toFixed(1)} %`} />
+            </div>,
+            <div key={r.key + "g"} className={`mono text-[12px] text-right font-semibold py-[5px] ${head ? "border-t" : ""}`} style={{ borderColor: "var(--rule-2)" }}>
+              +{(r.delta * 100).toFixed(1)} <span className="ink-3 font-normal">± {(r.delta_ci * 100).toFixed(1)}</span>
+            </div>,
+          ];
+        })}
+      </div>
+      <div className="foot flex flex-wrap gap-x-5 mt-2">
+        <span><span style={{ color: "var(--cur)" }}>■</span> current practice</span><span><span style={{ color: "var(--tat)" }}>■</span> with TATPAR</span>
+        <span>Gain stays between +{(s.min_delta * 100).toFixed(1)} and +{(s.max_delta * 100).toFixed(1)} pts{s.all_positive ? "; the 95 % interval excludes zero in every row" : ""}. Most of it comes from sparing and the flow plan, so biased or missing prognostics barely move the yearly average.</span>
+      </div>
+    </Panel>
   );
 }

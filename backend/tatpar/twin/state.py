@@ -86,6 +86,7 @@ class FleetState:
     engine_unit_life: np.ndarray                    # cycles
     seed: int = SEED
     expedite: set[int] = field(default_factory=set)  # lru types with expedited repair
+    life_mult: float = 1.0                           # sensitivity knob: scales every new LRU life
 
     # ------------------------------------------------------------------ helpers
     def copy(self) -> "FleetState":
@@ -133,7 +134,7 @@ class FleetState:
             self.ser_unit[s] = u
             self.ser_L[s] = self.engine_unit_life[u] * FH_PER_CYCLE
         else:
-            self.ser_L[s] = draw_life(lru_idx, r, bool(self.ser_rogue[s]))
+            self.ser_L[s] = draw_life(lru_idx, r, bool(self.ser_rogue[s])) * self.life_mult
         self.ser_age[s] = 0.0
         self.ser_hrs[s] = 0.0
         self.ser_cov[s] = 0.0

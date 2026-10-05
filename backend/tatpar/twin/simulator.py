@@ -63,12 +63,19 @@ HUM_NFF = np.exp(0.4 * FEAT[..., 2])                                  # [month, 
 
 @dataclass
 class Scenario:
-    """External conditions for a run: flying-task surges and readiness requirements."""
+    """External conditions for a run: flying-task surges and readiness requirements, plus the
+    sensitivity knobs used to test whether results survive different assumptions about the world."""
     surges: list[tuple[int, int, int, float]] = field(default_factory=list)   # (sqn, start_day, end_day, factor)
     requirements: list[tuple[int, int, int, int]] = field(default_factory=list)  # (sqn, start, end, min_mc)
+    life_mult: float = 1.0      # true LRU lives × this (0.77 ≈ 30 % more failures)
+    tat_mult: float = 1.0       # repair turnaround at BRD / HAL × this
+    task_mult: float = 1.0      # flying task (sorties demanded) × this
+    stock_mult: float = 1.0     # spares on hand × this (≈ inventory budget)
+    extra_bays: int = 0         # additional phase-check bays per squadron
+    risk_mult: float = 1.0      # prognostic risk the policies see × this (model bias)
 
     def factor(self, sqn: int, day: int) -> float:
-        f = 1.0
+        f = self.task_mult
         for s, a, b, k in self.surges:
             if s == sqn and a <= day <= b:
                 f *= k
@@ -92,7 +99,7 @@ class Simulator:
         self.counters = {"cann": 0, "nff_removals": 0, "nff_avoided": 0, "removals": 0,
                          "preventive": 0, "lateral": 0, "unsched_events": 0}
         sq = list(SQUADRONS.values())
-        self.sq_bays = np.array([x.bays for x in sq])
+        self.sq_bays = np.array([x.bays for x in sq]) + self.sc.extra_bays
         self.sq_wd = np.array([x.sorties_weekday for x in sq])
         self.sq_sat = np.array([x.sorties_saturday for x in sq])
         self.sq_mix = [np.array([x.mission_mix.get(m, 0) for m in MISSION_NAMES]) for x in sq]
@@ -324,7 +331,7 @@ class Simulator:
     def _proactive_spares(self, d: int) -> None:
         s = self.s
         r = self._risk(d, 14)
-        for sp_name in {SQUADRONS[q].base for q in SQN_IDS}:
+        for sp_name in dict.fromkeys(SQUADRONS[q].base for q in SQN_IDS):  # ordered: set order varies by process
             sp = SP_IDS.index(sp_name)
             at_base = s.tail_sp[s.pos_tail] == sp
             for li in range(len(LRU_IDS)):
@@ -628,7 +635,7 @@ class Simulator:
                 "rogue_truth": bool(s.ser_rogue[ser]), "engine_unit": int(s.ser_unit[ser]),
                 "age_eff": float(s.ser_age[ser]),
             })
-        tat = TAT[li]
+        tat = TAT[li] * self.sc.tat_mult
         if finding == "NFF":
             tat *= 0.4
         if li in s.expedite:

@@ -1,8 +1,11 @@
 """Snag intelligence: ATA-chapter auto-coding, similar-case retrieval and fix-effectiveness.
 
 * ATA coder — TF-IDF (word + character n-grams) + logistic regression, trained on fleet snags
-  (true ATA from the technical record) plus MaintNet real logbook problems weakly labelled by
-  keyword rules. Character n-grams make it robust to abbreviations, typos and Hinglish.
+  (true ATA from the technical record) plus MaintNet real logbook problems. A MaintNet problem is
+  labelled with the chapter of what the mechanic *did* (keyword rules on the action text) when the
+  action names a system, else by keyword rules on the problem text. Character n-grams make it
+  robust to abbreviations, typos and Hinglish. Evaluation is against the repair action, which the
+  model never sees, with the keyword rule and the majority class as baselines.
 * Retrieval — cosine similarity over normalised text of fleet history and MaintNet records,
   returning what was done and (for fleet cases) whether the defect came back within 30 days.
 """
@@ -65,6 +68,13 @@ def weak_ata(text: str) -> int | None:
     return None
 
 
+def _mask_keywords(text: str) -> str:
+    """Delete every span any labelling rule would match (used only for evaluation)."""
+    for _, rx in _RULES:
+        text = rx.sub(" ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def _vectorizer() -> FeatureUnion:
     return FeatureUnion([
         ("w", TfidfVectorizer(ngram_range=(1, 2), min_df=2, sublinear_tf=True)),
@@ -86,9 +96,12 @@ class SnagNLP:
         fleet = pd.DataFrame({"text": snags["text"], "ata": snags["ata"].astype(int), "src": "fleet",
                               "group": snags["tail"]})
         mn = load_logbook()
-        mn = mn.assign(ata=mn["problem"].map(weak_ata)).dropna(subset=["ata"])
+        act_lab = mn["action"].map(lambda a: weak_ata(str(a)))
+        mn = mn.assign(ata=act_lab.fillna(mn["problem"].map(weak_ata)), label_src=np.where(act_lab.notna(), "action", "problem"))
+        mn = mn.dropna(subset=["ata"])
         mnet = pd.DataFrame({"text": mn["problem"], "ata": mn["ata"].astype(int), "src": "maintnet",
-                             "group": "mn" + (mn.index // 20).astype(str)})
+                             "group": "mn" + (mn.index // 20).astype(str), "label_src": mn["label_src"],
+                             "rule": mn["problem"].map(weak_ata)})
         data = pd.concat([fleet, mnet], ignore_index=True)
         data["norm"] = data["text"].map(normalise)
         gss = GroupShuffleSplit(n_splits=1, test_size=0.25, random_state=0)
@@ -106,6 +119,7 @@ class SnagNLP:
         if len(hing):
             m["fleet_hinglish"] = {"n": int(len(hing)), "accuracy": float(accuracy_score(hing["ata"], hing["pred"]))}
         m["maintnet_weak_label_coverage"] = float(len(mn) / max(1, len(load_logbook())))
+        m.update(self._honest_eval(model, test, mn))
         self.metrics = m
         model.fit(data["norm"], data["ata"])
         self.ata_model = model
@@ -113,6 +127,35 @@ class SnagNLP:
         if verbose:
             print("snag NLP:", {k: v for k, v in m.items()})
         return self
+
+    @staticmethod
+    def _honest_eval(model: Pipeline, test: pd.DataFrame, mn: pd.DataFrame) -> dict:
+        """Two checks that do not grade the model against the same keyword rule that labelled it.
+
+        * keyword-masked: every rule keyword is deleted from the held-out MaintNet problems before
+          prediction, so only the surrounding context is left — can the model still code the chapter?
+        * vs action: the label comes from what the mechanic *did* (the rule applied to the action text,
+          which the model never sees), compared with the keyword rule on the problem text as a baseline.
+        """
+        out: dict = {}
+        mt = test[test["src"] == "maintnet"]
+        if mt.empty:
+            return out
+        masked = mt["text"].map(lambda t: _mask_keywords(t))
+        keep = masked.str.split().str.len() >= 2
+        if keep.any():
+            pm = model.predict(masked[keep].map(normalise))
+            out["maintnet_keyword_masked"] = {"n": int(keep.sum()), "accuracy": float(accuracy_score(mt["ata"][keep], pm)),
+                                              "chance_majority": float(mt["ata"][keep].value_counts(normalize=True).iloc[0])}
+        ok = mt["label_src"] == "action"
+        if ok.any():
+            y = mt["ata"][ok].astype(int)
+            rule = mt["rule"][ok]
+            out["maintnet_vs_action"] = {
+                "n": int(ok.sum()), "model_accuracy": float(accuracy_score(y, mt["pred"][ok])),
+                "keyword_rule_accuracy": float((rule == y).mean()), "keyword_rule_coverage": float(rule.notna().mean()),
+                "majority_class": float(y.value_counts(normalize=True).iloc[0])}
+        return out
 
     def _build_retrieval(self, snags: pd.DataFrame) -> None:
         snags = snags.sort_values("day")

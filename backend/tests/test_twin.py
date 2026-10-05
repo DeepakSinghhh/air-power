@@ -63,3 +63,32 @@ def test_tatpar_levers_improve_availability(initial):
 def test_baseline_in_reported_serviceability_band(initial):
     mc = (Simulator(initial.copy(), BASELINE, seed=1).run(365).status_array() == 0).mean()
     assert 0.45 < mc < 0.68   # reported Su-30MKI serviceability band 48-68 %
+
+
+def test_reproducible_across_processes():
+    """Same seed, different Python hash seeds -> identical history (no set-order dependence)."""
+    import os
+    import subprocess
+    import sys
+
+    code = ("import numpy as np; from tatpar.twin.state import build_initial_state; from tatpar.twin.simulator import Simulator; "
+            "from tatpar.twin.policies import TATPAR; from tatpar.prognostics.belief import Belief;"
+            "st = build_initial_state(seed=3); rf = lambda s, h: np.full(len(s.pos_tail), 0.2);"
+            "sim = Simulator(st, TATPAR.with_(risk_fn=rf), seed=5).run(40); print(int(sim.status_array().sum()), sim.counters)")
+    outs = {subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True,
+                           env={**os.environ, "PYTHONHASHSEED": h}).stdout for h in ("1", "2", "3")}
+    assert len(outs) == 1, outs
+
+
+def test_sensitivity_knobs_move_the_twin(initial):
+    """The knobs used by the sensitivity study change the world in the expected direction."""
+    from tatpar.twin.montecarlo import forecast
+    from tatpar.twin.simulator import Scenario
+
+    def mc(**kw):
+        return forecast(initial, BASELINE, 60, 3, None, Scenario(**kw), mode="truth_resampled", workers=1).mc_rate()
+
+    ref = mc()
+    assert mc(life_mult=0.6) < ref           # more failures -> fewer mission-capable aircraft
+    assert mc(tat_mult=2.0) < ref            # slower repairs -> fewer
+    assert mc(task_mult=0.5) > ref - 0.01    # lighter flying task -> not worse

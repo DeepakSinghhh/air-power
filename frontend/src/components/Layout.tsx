@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useApi } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { useTheme } from "../lib/theme";
 import { InkDefs } from "./glyphs";
 
-/** Who is at the desk. The code is what gets written into the decision ledger. */
+/** Boards each authority uses most (marked on the strip). */
 export const PERSONAS = [
   { id: "STN CDR", title: "Station Commander", focus: ["/", "/planner", "/loss"] },
   { id: "SENGO", title: "Senior Engineering Officer", focus: ["/flow", "/aircraft", "/snags"] },
@@ -12,8 +13,8 @@ export const PERSONAS = [
   { id: "DEPOT MGR", title: "Depot Manager", focus: ["/sustainment"] },
   { id: "AUDITOR", title: "Analyst / Auditor", focus: ["/proof"] },
 ];
-const PersonaCtx = createContext<{ persona: string; setPersona: (p: string) => void }>({ persona: "STN CDR", setPersona: () => {} });
-export const usePersona = () => useContext(PersonaCtx);
+/** The authority at the desk is the signed-in user's role — never a free choice. */
+export const usePersona = () => ({ persona: useAuth().user?.role ?? "" });
 
 export const BOARDS = [
   { to: "/", no: "01", label: "STATE" },
@@ -43,31 +44,17 @@ function useClock() {
 }
 
 export function Layout({ children, onCopilot }: { children: ReactNode; onCopilot: () => void }) {
-  const [persona, setPersona] = useState(() => {
-    try {
-      const p = localStorage.getItem("tatpar-persona");
-      return PERSONAS.some((x) => x.id === p) ? (p as string) : "STN CDR";
-    } catch {
-      return "STN CDR";
-    }
-  });
+  const { user, logout } = useAuth();
+  const persona = user?.role ?? "";
   const { dark, setMode } = useTheme();
   const meta = useApi<any>("/api/meta");
   const now = useClock();
   const ist = new Date(now.getTime() + 330 * 60000);
   const focus = PERSONAS.find((p) => p.id === persona)?.focus ?? [];
-  const choose = (p: string) => {
-    setPersona(p);
-    try {
-      localStorage.setItem("tatpar-persona", p);
-    } catch {
-      /* ignore */
-    }
-  };
   const m = meta.data;
   const nTails = m ? m.squadrons.reduce((a: number, s: any) => a + (s.n ?? s.tails ?? 16), 0) : 64;
   return (
-    <PersonaCtx.Provider value={{ persona, setPersona: choose }}>
+    <>
       <InkDefs />
       <div className="sticky top-0 z-20">
         <header className="strip">
@@ -83,12 +70,10 @@ export function Layout({ children, onCopilot }: { children: ReactNode; onCopilot
           <div className="dtg hidden lg:flex" title="Live date-time group (UTC)">
             {dtg(now)}<small>DTG · IST {p2(ist.getUTCHours())}{p2(ist.getUTCMinutes())}</small>
           </div>
-          <label className="idtag hidden sm:block" title={PERSONAS.find((p) => p.id === persona)?.title}>
-            <small>AUTHORITY</small>
-            <select value={persona} onChange={(e) => choose(e.target.value)} aria-label="Persona">
-              {PERSONAS.map((p) => <option key={p.id} value={p.id}>{p.id}</option>)}
-            </select>
-          </label>
+          <div className="idtag hidden sm:block" title={`Signed in: ${user?.name}`}>
+            <small>SIGNED IN</small>
+            <span className="flex items-center gap-2">{persona}<button className="signout" onClick={logout} title="Sign out">OUT</button></span>
+          </div>
           <div className="sw" role="group" aria-label="Theme">
             <button className={dark ? "" : "on"} onClick={() => setMode("light")}>DAY</button>
             <button className={dark ? "on" : ""} onClick={() => setMode("dark")}>NIGHT</button>
@@ -103,6 +88,6 @@ export function Layout({ children, onCopilot }: { children: ReactNode; onCopilot
         </div>
       </div>
       <main className="px-3 sm:px-5 py-4">{children}</main>
-    </PersonaCtx.Provider>
+    </>
   );
 }

@@ -10,28 +10,48 @@ import "@fontsource/ibm-plex-mono/latin-700.css";
 import "@fontsource/ibm-plex-sans/latin-400.css";
 import "@fontsource/ibm-plex-sans/latin-600.css";
 import "@fontsource/special-elite/latin-400.css";
-import { StrictMode, useState } from "react";
+import { lazy, StrictMode, Suspense, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Copilot } from "./components/Copilot";
 import { Layout } from "./components/Layout";
+import { Login } from "./components/Login";
 import "./index.css";
+import { AuthProvider, useAuth } from "./lib/auth";
 import { ThemeProvider } from "./lib/theme";
-import AircraftPage from "./pages/Aircraft";
-import FlowPage from "./pages/FleetFlow";
-import LossPage from "./pages/Loss";
-import Overview from "./pages/Overview";
-import PlannerPage from "./pages/Planner";
-import ProofPage from "./pages/Proof";
-import SnagsPage from "./pages/Snags";
-import SustainmentPage from "./pages/Sustainment";
+import { Loading } from "./components/ui";
+
+// each board is its own chunk, so the first screen does not wait for every chart
+const Overview = lazy(() => import("./pages/Overview"));
+const PlannerPage = lazy(() => import("./pages/Planner"));
+const FlowPage = lazy(() => import("./pages/FleetFlow"));
+const AircraftPage = lazy(() => import("./pages/Aircraft"));
+const SustainmentPage = lazy(() => import("./pages/Sustainment"));
+const LossPage = lazy(() => import("./pages/Loss"));
+const SnagsPage = lazy(() => import("./pages/Snags"));
+const ProofPage = lazy(() => import("./pages/Proof"));
 
 function App() {
-  const [copilot, setCopilot] = useState(false);
   return (
     <ThemeProvider>
+      <AuthProvider>
+        <Gate />
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+
+/** Nothing but the sign-in screen until the server has accepted a session. */
+function Gate() {
+  const { user, ready } = useAuth();
+  const [copilot, setCopilot] = useState(false);
+  if (!ready) return null;
+  if (!user) return <Login />;
+  return (
+    <>
       <BrowserRouter>
         <Layout onCopilot={() => setCopilot(true)}>
+          <Suspense fallback={<Loading label="LOADING BOARD" />}>
           <Routes>
             <Route path="/" element={<Overview />} />
             <Route path="/planner" element={<PlannerPage />} />
@@ -45,10 +65,11 @@ function App() {
             <Route path="/data" element={<ProofPage />} />
             <Route path="/models" element={<ProofPage />} />
           </Routes>
+          </Suspense>
         </Layout>
         <Copilot open={copilot} onClose={() => setCopilot(false)} />
       </BrowserRouter>
-    </ThemeProvider>
+    </>
   );
 }
 

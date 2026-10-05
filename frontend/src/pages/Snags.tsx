@@ -4,6 +4,7 @@ import { Stamp } from "../components/glyphs";
 import { dataDtg } from "../components/Layout";
 import { Board, ErrorBox, Loading, Meter, Panel } from "../components/ui";
 import { fmtPct, postJSON, useApi } from "../lib/api";
+import { useAuth } from "../lib/auth";
 
 const EXAMPLES: [string, string][] = [
   ["HYD PRESSURE LH SYSTEM MEIN FLUCTUATION, TAXI KE DAURAN", "HYD_PUMP"],
@@ -20,14 +21,22 @@ export default function SnagsPage() {
   const [lru, setLru] = useState(EXAMPLES[0][1]);
   const [res, setRes] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [filed, setFiled] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const { can } = useAuth();
   const meta = useApi<any>("/api/meta");
   const stats = useApi<any>("/api/snags/stats");
-  const recent = useApi<any[]>("/api/snags/recent");
+  const recent = useApi<any[]>("/api/snags/recent", [filed?.snag_id]);
   const fleet = useApi<any[]>("/api/fleet");
-  const analyse = async (txt = text, l = lru) => {
+  const analyse = async (txt = text, l = lru, file = false) => {
     setBusy(true);
+    setErr(null);
     try {
-      setRes(await postJSON("/api/snags/analyse", { text: txt, tail, lru: l || null }));
+      const r = await postJSON(file ? "/api/snags/file" : "/api/snags/analyse", { text: txt, tail, lru: l || null });
+      setRes(r);
+      setFiled(file ? r.entry : null);
+    } catch (e) {
+      setErr(String(e));
     } finally {
       setBusy(false);
     }
@@ -54,10 +63,16 @@ export default function SnagsPage() {
               <option value="">— not known —</option>
               {(meta.data?.lrus || []).map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select></td>
-            <td><button className="btn ink w-full justify-center" onClick={() => analyse()} disabled={busy}>{busy ? "CODING…" : "FILE + ANALYSE"}</button></td>
+            <td>{can("snags:file")
+              ? <button className="btn ink w-full justify-center" onClick={() => analyse(text, lru, true)} disabled={busy}>{busy ? "CODING…" : "FILE ENTRY"}</button>
+              : <button className="btn w-full justify-center" onClick={() => analyse()} disabled={busy}>{busy ? "CODING…" : "ANALYSE ONLY"}</button>}</td>
           </tr></tbody>
         </table>
-        <div className="flex flex-wrap gap-1.5 mt-2 items-center"><span className="cond text-[12px] ink-3 mr-1">TRY:</span>
+        {filed && <div className="mt-2 flex items-center gap-3"><span className="stamp green thump" style={{ transform: "rotate(-3deg)" }}>FILED {filed.snag_id}</span>
+          <span className="mono text-[11.5px] ink-2">ENTERED IN THE TECH LOG OF {filed.tail} BY {filed.filed_by} · CODED ATA {filed.ata}</span></div>}
+        {!can("snags:file") && <div className="mono text-[11px] ink-3 mt-2">SIGNED IN AS A ROLE THAT CANNOT FILE — ANALYSIS ONLY (FILING: SENGO / STN CDR).</div>}
+        {err && <div className="mono text-[11.5px] mt-2" style={{ color: "var(--crit)" }}>✕ {err}</div>}
+        <div className="flex flex-wrap gap-1.5 mt-2 items-center"><span className="cond text-[12px] ink-3 mr-1">TRY (ANALYSE ONLY):</span>
           {EXAMPLES.slice(1).map(([e, l]) => <button key={e} className="tag" onClick={() => { setText(e); setLru(l); analyse(e, l); }}>{e.length > 38 ? e.slice(0, 38) + "…" : e}</button>)}
         </div>
       </div>
@@ -128,8 +143,8 @@ export default function SnagsPage() {
             <table>
               <thead><tr><th style={{ width: 92 }}>Date</th><th style={{ width: 70 }}>Tail</th><th style={{ width: 40 }}>ATA</th><th>Defect reported</th><th style={{ width: 120 }}>Finding</th></tr></thead>
               <tbody>{(recent.data || []).map((s) => (
-                <tr key={s.snag_id}><td className="n">{s.date.slice(0, 10)}</td><td><Link to={`/aircraft/${s.tail}`}>{s.tail}</Link></td><td>{s.ata}</td><td>{s.text}</td>
-                  <td><Stamp tone={s.finding === "NFF" ? "grey" : "red"} rotate={(s.snag_id.charCodeAt(s.snag_id.length - 1) % 5) - 2}>{s.finding}</Stamp></td></tr>))}</tbody>
+                <tr key={s.snag_id}><td className="n">{s.date.slice(0, 10)}{s.filed_by && <div className="text-[10px]" style={{ color: "var(--blue-ink)" }}>{s.snag_id} · {s.filed_by}</div>}</td><td><Link to={`/aircraft/${s.tail}`}>{s.tail}</Link></td><td>{s.ata}</td><td>{s.text}</td>
+                  <td><Stamp tone={s.finding === "NFF" ? "grey" : s.finding === "OPEN" ? "blue" : "red"} rotate={(s.snag_id.charCodeAt(s.snag_id.length - 1) % 5) - 2}>{s.finding}</Stamp></td></tr>))}</tbody>
             </table>
           </div>
         </div>

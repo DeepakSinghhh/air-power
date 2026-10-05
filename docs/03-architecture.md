@@ -62,5 +62,5 @@ EnvironmentIndex (base, dust, heat, humidity, altitude → severity)
 | Readiness forecast (64 tails × 60 days × 200 runs) | < 15 s on a 4-core laptop |
 | FMP solve (64 tails × 30 days) | ≤ 20 s time limit, warm-started |
 | API latency for dashboards | < 300 ms (cached artifacts) |
-| Security | RBAC personas, audit chain, no external calls at runtime |
+| Security | Sign-in (PBKDF2-hashed PINs, signed expiring tokens, lockout after 5 failures); role permissions enforced server-side on every decision; hash-chained ledger with HMAC-signed entries; no external calls at runtime |
 | Data | Public + synthetic only; every figure labelled notional or sourced |

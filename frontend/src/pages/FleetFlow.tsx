@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PhaseTrack } from "../components/PhaseTrack";
-import { Board, Chart, ErrorBox, Loading, Panel } from "../components/ui";
+import { Chart } from "../components/Chart";
+import { Board, ErrorBox, Loading, Panel } from "../components/ui";
 import { fmt, fmtPct, postJSON, useApi } from "../lib/api";
 import { endLabel, grid, tooltip, yVal } from "../lib/charts";
 import { useTheme } from "../lib/theme";

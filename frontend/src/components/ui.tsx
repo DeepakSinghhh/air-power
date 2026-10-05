@@ -1,6 +1,4 @@
-import ReactECharts from "echarts-for-react";
 import type { ReactNode } from "react";
-import { MONO } from "../lib/charts";
 import { STATE_CODE, STATE_LABEL, STATE_ORDER, stateCss } from "../lib/theme";
 
 /** Square panel with an olive label plate. */
@@ -28,18 +26,6 @@ export function Board({ no, title, sub, right, children }: { no: string; title: 
       </header>
       {children}
     </div>
-  );
-}
-
-export function Chart({ option, height = 260, onEvents }: { option: object; height?: number; onEvents?: Record<string, (p: any) => void> }) {
-  return (
-    <ReactECharts
-      option={{ backgroundColor: "transparent", animationDuration: 300, textStyle: { fontFamily: MONO }, ...option }}
-      style={{ height, width: "100%" }}
-      notMerge
-      lazyUpdate
-      onEvents={onEvents}
-    />
   );
 }
 

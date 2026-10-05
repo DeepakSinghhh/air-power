@@ -28,7 +28,8 @@ Conformalised quantile regression lifts interval coverage to the nominal 90 % wi
 
 ## 3b. Snag intelligence (ATA auto-coding)
 
-* Real MaintNet logbook problems (held-out, against keyword weak labels; 65% of records labelled): accuracy **98.7%**, macro-F1 0.71.
+* Real MaintNet logbook problems (481 held-out entries whose repair action names a system): the model's chapter matches **what was actually repaired 75%** of the time, vs 69% for the keyword rule on the problem text (which fires on 94% of entries) and 64% for always guessing the most common chapter. The model reads only the problem text; the label comes from the action.
+* With every rule keyword deleted from the problem text, accuracy is 74% against a 74% majority-class baseline — on this real text the model is not learning much beyond the keywords. Its practical value is coverage and robustness to spelling, abbreviations and Hinglish; a unit deployment should add a few hundred expert-coded entries (active learning).
 * Fleet snags (held-out tails): accuracy 100.0% — easy by construction (templated synthetic text); Hinglish entries included.
 
 ## 4. Readiness forecast calibration
@@ -43,14 +44,40 @@ Belief-mode forecasts (models only) vs outcomes drawn from the hidden truth: the
 | + Readiness-based sparing (same budget) | 67.8 % | +10.1 ± 0.5 | 7.9 % | 9.8 % |
 | + Phase-flow flying plan | 77.6 % | +9.8 ± 0.6 | 7.5 % | 0.2 % |
 | + Consolidated cannibalisation | 77.9 % | +0.3 ± 0.6 | 7.3 % | 0.3 % |
-| + Predictive spares & fast lateral | 77.5 % | -0.4 ± 0.5 | 7.7 % | 0.3 % |
-| + Bundle engine changes into checks | 77.7 % | +0.2 ± 0.4 | 7.5 % | 0.3 % |
-| + No-Fault-Found screening | 77.9 % | +0.2 ± 0.7 | 7.0 % | 0.3 % |
-| + Scheduled work while awaiting spares | 78.0 % | +0.0 ± 0.5 | 6.9 % | 0.3 % |
+| + Predictive spares & fast lateral | 77.7 % | -0.2 ± 0.5 | 7.6 % | 0.3 % |
+| + Bundle engine changes into checks | 77.6 % | -0.1 ± 0.4 | 7.6 % | 0.3 % |
+| + No-Fault-Found screening | 77.9 % | +0.3 ± 0.7 | 7.0 % | 0.3 % |
+| + Scheduled work while awaiting spares | 78.1 % | +0.2 ± 0.3 | 6.8 % | 0.3 % |
 
-**Total: +20.3 ± 0.5 percentage points ≈ 13 more mission-capable aircraft every day from the same 64-aircraft fleet.**
+**Total: +20.4 ± 0.6 percentage points ≈ 13 more mission-capable aircraft every day from the same 64-aircraft fleet.**
 
 Readiness-based sparing reallocates the *same* inventory budget (₹172 crore): modelled supply availability 83% → 96%. Fixing spares alone moves the bottleneck to the hangar (aircraft queue for a bay); the phase-flow plan removes it.
+
+## 5b. Does the gain survive different assumptions? (one year, 24 hidden-truth futures each)
+
+Each row changes one assumption of the notional fleet and re-measures current practice against the full TATPAR policy on the same random futures. The models are **not** refitted to the changed world, so they are also mis-specified in every row.
+
+| Assumption | Change | Current practice | With TATPAR | Gain (95 % CI) | ≈ aircraft / day |
+|---|---|---|---|---|---|
+| Reference | As modelled | 57.7 % | 78.1 % | **+20.4 ± 0.6 pts** | 13.1 |
+| LRU failure rate | +30 % failures | 48.9 % | 74.9 % | **+26.1 ± 0.8 pts** | 16.7 |
+| LRU failure rate | −30 % failures | 64.0 % | 80.2 % | **+16.3 ± 0.5 pts** | 10.4 |
+| Repair turnaround (BRD / HAL) | +30 % slower | 52.7 % | 74.2 % | **+21.6 ± 0.7 pts** | 13.8 |
+| Repair turnaround (BRD / HAL) | −30 % faster | 61.2 % | 81.3 % | **+20.1 ± 0.6 pts** | 12.9 |
+| Spares inventory | −40 % stock | 55.3 % | 76.5 % | **+21.1 ± 0.6 pts** | 13.5 |
+| Spares inventory | +40 % stock | 59.4 % | 78.4 % | **+19.0 ± 0.5 pts** | 12.2 |
+| Flying task | +20 % sorties | 50.3 % | 71.7 % | **+21.4 ± 0.6 pts** | 13.7 |
+| Flying task | −20 % sorties | 60.2 % | 83.4 % | **+23.2 ± 0.4 pts** | 14.8 |
+| Hangar capacity | 2 bays per squadron | 60.5 % | 77.9 % | **+17.4 ± 0.6 pts** | 11.1 |
+| Prognostic model error | risk under-predicted ×0.6 | 57.7 % | 78.1 % | **+20.4 ± 0.6 pts** | 13.1 |
+| Prognostic model error | risk over-predicted ×1.5 | 57.7 % | 78.1 % | **+20.4 ± 0.6 pts** | 13.1 |
+| Prognostic model error | NFF classifier half as sensitive | 57.7 % | 78.1 % | **+20.4 ± 0.5 pts** | 13.1 |
+| Prognostic model error | no prognostics at all (risk = 0) | 57.7 % | 77.7 % | **+20.0 ± 0.6 pts** | 12.8 |
+| Prognostic model error | spares sized on last year's demand | 57.7 % | 76.6 % | **+18.9 ± 0.6 pts** | 12.1 |
+
+Across every change the gain stays between **+16.3** and **+26.1** points (reference +20.4), and its 95 % interval excludes zero in every row.
+
+Reading the prognostic rows: over a whole year almost all of the gain comes from readiness-based sparing and the phase-flow plan, so biased or missing risk scores barely move the *average*. The models earn their keep in the short-horizon decisions instead — which aircraft to protect, which engine to change at the next phase, and P(meet) for a specific requirement (sections 1, 6).
 
 ## 6. Readiness-backward planning (demo requirement)
 
@@ -61,8 +88,8 @@ Requirement: ≥9 mission-capable aircraft at Sqn A (HF) — Jodhpur from D+14 t
 | Current practice | 12% | +0 pts |
 | Requirement-aware flying & maintenance plan | 13% | +2 pts |
 | Pre-position spares at Jodhpur | 29% | +16 pts |
-| Expedite critical repairs at BRD / HAL | 31% | +2 pts |
-| Consolidated cannibalisation + NFF screening | 44% | +13 pts |
+| Expedite critical repairs at BRD / HAL | 32% | +2 pts |
+| Consolidated cannibalisation + NFF screening | 46% | +14 pts |
 
 ## 7. Federated learning across bases (engine RUL, NASA C-MAPSS)
 

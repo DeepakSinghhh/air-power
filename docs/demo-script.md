@@ -1,6 +1,6 @@
 # Demo script — TATPAR (≈ 5 minutes)
 
-> Record at 1440 × 900, **DAY** theme, authority **STN CDR**. Speak to the *decision*, not the model.
+> Record at 1440 × 900, **DAY** theme. Sign in as **STN CDR** (demo PIN 2601). Speak to the *decision*, not the model.
 > Every figure on screen is from the notional fleet unless it is labelled NASA C-MAPSS / MaintNet / CAMS.
 
 ## 0 · Hook (0:00–0:30) — 01 STATE
@@ -13,11 +13,11 @@
 - The task reads as one sentence: **SQN-A to hold at least 9 aircraft every day from D+14 to D+17 at 1.2 × flying task**.
 - "Current practice meets it 12 % of the time." Walk up the **staircase**: flying & maintenance plan → pre-positioned spares → depot expedite → consolidated cannibalisation & No-Fault-Found screening → 44 %.
 - "Each step is measured on the same random futures, so the gain belongs to that action."
-- Read the **operation order**: phase checks moved, engines capped at their conformal lower bound, which spares move where. Click **APPROVE**: stamp, ledger entry.
+- Read the **operation order**: phase checks moved, engines capped at their conformal lower bound, which spares move where. Click **APPROVE**: stamp, ledger entry, and one **order per action** appears in the tracker, routed to its owner (SENGO, LOG OFFR, DEPOT MGR). "Approval is the start of the loop: the logistics officer marks the transfers actioned, and each change is signed into the ledger." 
 
 ## 2 · Why readiness is lost (1:45–2:30) — 06 AFTER-ACTION
 - Waterfall: awaiting spares is the biggest loss. Readiness **waves** (▼): aircraft converge on the same phase point and queue for the hangar.
-- Lever staircase: **readiness-based sparing at the same ₹172 crore** +10 pts, but the queue moves to the hangar; the **phase-flow plan** +10 pts removes it. "57.7 % → 78.0 %, about 13 more aircraft every day, same fleet, same budget."
+- Lever staircase: **readiness-based sparing at the same ₹172 crore** +10 pts, but the queue moves to the hangar; the **phase-flow plan** +10 pts removes it. "57.7 % → 78.1 %, about 13 more aircraft every day, same fleet, same budget." Then the robustness panel: "change any assumption — failure rates, repair times, stock, flying task — and the gain stays between +16 and +26 points."
 
 ## 3 · The flight line (2:30–3:10) — 03 FLIGHT LINE
 - Phase track: click **TODAY → +180 D · CURRENT** and the aircraft slide into a bunch at the bay; **+180 D · TATPAR** spreads them back over the ideal ticks.

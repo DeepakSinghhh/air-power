@@ -25,7 +25,7 @@ def _init(state, belief, policy, scenario, days, mode, stock_override):
               stock_override=stock_override)
 
 
-def resample_truth(st: FleetState, rng: np.random.Generator) -> FleetState:
+def resample_truth(st: FleetState, rng: np.random.Generator, life_mult: float = 1.0) -> FleetState:
     """New hidden realisation: every LRU life redrawn from the *true* distribution conditional on
     its consumed life (engines keep their HUMS trajectory). Used to evaluate policies and forecast
     calibration over many possible futures rather than one."""
@@ -33,12 +33,13 @@ def resample_truth(st: FleetState, rng: np.random.Generator) -> FleetState:
     from .state import ENGINE_IDX, LRU_IDS
 
     b = st.copy()
+    b.life_mult = life_mult
     for s in range(b.n_ser):
         li = int(b.ser_type[s])
         if li == ENGINE_IDX:
             continue
         l = LRU_TYPES[LRU_IDS[li]]
-        eta = l.eta_fh * (0.07 if b.ser_rogue[s] else 1.0)
+        eta = l.eta_fh * life_mult * (0.07 if b.ser_rogue[s] else 1.0)
         a = b.ser_age[s]
         u = max(rng.random(), 1e-12)
         b.ser_L[s] = eta * ((a / eta) ** l.beta - np.log(u)) ** (1 / l.beta)
@@ -58,20 +59,34 @@ def _apply_stock(st: FleetState, override: dict | None, seed: int) -> None:
             st.stock[(sp, li)] = cur + [st.new_serial(li, rng) for _ in range(qty - len(cur))]
 
 
+def _scale_stock(st: FleetState, mult: float, seed: int) -> None:
+    """Scale on-hand spares at every stock point (sensitivity to the inventory budget)."""
+    if mult == 1.0:
+        return
+    rng = np.random.default_rng([seed, 31])
+    for key, cur in list(st.stock.items()):
+        n = int(round(len(cur) * mult))
+        st.stock[key] = cur[:n] if n <= len(cur) else cur + [st.new_serial(key[1], rng) for _ in range(n - len(cur))]
+
+
 def _one(seed: int) -> dict:
     st: FleetState = _G["state"]
+    sc: Scenario = _G["scenario"]
     rng = np.random.default_rng([seed, 99])
     if _G["mode"] == "belief" and _G["belief"] is not None:
         s = _G["belief"].sample_beliefs(st, rng)
     elif _G["mode"] == "truth_resampled":
-        s = resample_truth(st, rng)
+        s = resample_truth(st, rng, sc.life_mult)
     else:
         s = st.copy()
+        s.life_mult = sc.life_mult
     _apply_stock(s, _G["stock_override"], seed)
+    _scale_stock(s, sc.stock_mult, seed)
     pol: Policy = _G["policy"]
     if pol.risk_fn is not None and _G["belief"] is not None:
-        pol = pol.with_(risk_fn=_G["belief"].risk_fn)
-    sim = Simulator(s, pol, _G["scenario"], seed=seed).run(_G["days"])
+        rf, m = _G["belief"].risk_fn, sc.risk_mult
+        pol = pol.with_(risk_fn=rf if m == 1.0 else (lambda state, h: np.clip(rf(state, h) * m, 0.0, 1.0)))
+    sim = Simulator(s, pol, sc, seed=seed).run(_G["days"])
     A = sim.status_array()
     sq = s.tail_sqn
     mc_sq = np.stack([(A[:, sq == k] == MC).sum(1) for k in range(len(SQN_IDS))], axis=1)  # [days, sqn]

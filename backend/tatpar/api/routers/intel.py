@@ -5,15 +5,20 @@ import io
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from ...domain.catalog import LRU_TYPES, SQUADRONS
+from ...twin.state import SQN_IDS
 from ...prognostics.leaks import nff_features
+from ...trust import records
+from ...trust.auth import User
 from ...twin.state import SP_IDS
 from ..context import get_ctx
+from ..security import require
 
 router = APIRouter(prefix="/api", tags=["intel"])
+SQUADRONS_BY_IDX = dict(enumerate(SQN_IDS))
 
 
 class SnagReq(BaseModel):
@@ -47,11 +52,44 @@ def analyse(req: SnagReq):
     return {"ata": ata, "similar": similar, "fix_effectiveness": fix, "nff": nff}
 
 
+COLS = ["snag_id", "date", "tail", "squadron", "ata", "system", "lru", "text", "finding", "action"]
+
+
+def filed_for(tail: str | None = None) -> list[dict]:
+    """Entries filed from the ops room or imported, newest first (with who filed them)."""
+    fs = [f for f in reversed(records.filed_snags()) if tail is None or f["tail"] == tail]
+    return [{**{k: f.get(k) for k in COLS}, "filed_by": f.get("filed_by"), "source": f.get("source", "FILED")} for f in fs]
+
+
+def _file(ctx, tail: str, text: str, lru: str | None, date: str, by: str, source: str) -> dict:
+    t = ctx.state.tail_ids.index(tail)
+    a = ctx.nlp.classify(text, 1)[0]
+    return records.file_snag({"date": date, "tail": tail, "squadron": SQUADRONS_BY_IDX[int(ctx.state.tail_sqn[t])], "ata": a["ata"],
+                              "system": a["name"], "ata_p": a["p"], "lru": lru or "", "text": text.strip().upper()[:400],
+                              "filed_by": by, "source": source})
+
+
 @router.get("/snags/recent")
 def recent():
     ctx = get_ctx()
     s = ctx.tables["snags"].sort_values("day", ascending=False).head(60)
-    return s[["snag_id", "date", "tail", "squadron", "ata", "system", "lru", "text", "finding", "action"]].astype({"date": str}).to_dict("records")
+    return filed_for() + s[COLS].astype({"date": str}).to_dict("records")
+
+
+class FileReq(BaseModel):
+    text: str
+    tail: str
+    lru: str | None = None
+
+
+@router.post("/snags/file")
+def file_snag(req: FileReq, user: User = Depends(require("snags:file"))):
+    """Analyse and record a new technical-log entry (it then appears in the tech log and the aircraft record)."""
+    ctx = get_ctx()
+    if req.tail not in ctx.state.tail_ids or not req.text.strip():
+        raise HTTPException(422, "unknown tail or empty defect text")
+    res = analyse(SnagReq(text=req.text, tail=req.tail, lru=req.lru))
+    return {**res, "entry": _file(ctx, req.tail, req.text, req.lru, ctx.today, user.role, "FILED")}
 
 
 @router.get("/snags/stats")
@@ -121,14 +159,43 @@ REQUIRED = {
 }
 
 
+def _read_csv(raw: bytes) -> tuple[pd.DataFrame | None, str | None]:
+    try:
+        return pd.read_csv(io.BytesIO(raw)), None
+    except Exception as e:  # noqa: BLE001
+        return None, f"Could not parse CSV: {e}"
+
+
 @router.post("/data/validate")
 async def validate(kind: str, file: UploadFile = File(...)):
     """Validate an uploaded CSV export against the common data model (no data is stored)."""
-    raw = await file.read()
-    try:
-        df = pd.read_csv(io.BytesIO(raw))
-    except Exception as e:  # noqa: BLE001
-        return {"ok": False, "errors": [f"Could not parse CSV: {e}"]}
+    df, err = _read_csv(await file.read())
+    if err:
+        return {"ok": False, "errors": [err]}
+    return _check(kind, df)
+
+
+@router.post("/snags/import")
+async def import_snags(file: UploadFile = File(...), user: User = Depends(require("data:import"))):
+    """Validate an e-MMS / Form-700 style CSV export and file every row with a known tail into the tech log."""
+    df, err = _read_csv(await file.read())
+    if err:
+        return {"ok": False, "errors": [err], "filed": 0}
+    rep = _check("snags", df)
+    if not rep["ok"]:
+        return {**rep, "filed": 0}
+    ctx = get_ctx()
+    df.columns = [c.strip().lower() for c in df.columns]
+    filed = []
+    for _, r in df.head(500).iterrows():
+        tail, text = str(r["tail"]).strip(), str(r["text"])
+        if tail in ctx.state.tail_ids and text.strip() and text != "nan":
+            lru = str(r["lru"]) if "lru" in df.columns and str(r["lru"]) in LRU_TYPES else None
+            filed.append(_file(ctx, tail, text, lru, str(pd.to_datetime(r["date"]).date()), user.role, "IMPORT")["snag_id"])
+    return {**rep, "filed": len(filed), "first": filed[0] if filed else None, "last": filed[-1] if filed else None}
+
+
+def _check(kind: str, df: pd.DataFrame) -> dict:
     cols = [c.strip().lower() for c in df.columns]
     df.columns = cols
     errors, warnings = [], []
@@ -176,7 +243,10 @@ def models():
         {"id": "rogue", "name": "Rogue-unit detector (PIT/Fisher + life ratio)", "data": "Serial removal histories",
          "metrics": m["rogue"], "intended_use": "Quarantine and deep-strip candidates", "limits": "Needs ≥2–3 removals."},
         {"id": "snag_nlp", "name": "ATA auto-coder & case retrieval", "data": "Fleet snags + MaintNet logbook (public)",
-         "metrics": m.get("snag_nlp"), "intended_use": "Coding, search, fix recommendation", "limits": "MaintNet labels are keyword-derived."},
+         "metrics": {k: v for k, v in (m.get("snag_nlp") or {}).items() if k in ("maintnet_vs_action", "maintnet_keyword_masked", "fleet", "fleet_hinglish")},
+         "intended_use": "Coding, search, fix recommendation",
+         "limits": "On real logbook text it agrees with what was repaired about 3 times in 4 — a little better than keyword rules, "
+                   "and no better than guessing once its keywords are removed. Needs a few hundred expert-coded unit entries."},
         {"id": "forecast", "name": "Readiness forecast (Fleet Twin Monte-Carlo)", "data": "All of the above",
          "metrics": fc.get("calibration"), "intended_use": "P(meet requirement), planning", "limits": "Notional fleet parameters."},
     ]

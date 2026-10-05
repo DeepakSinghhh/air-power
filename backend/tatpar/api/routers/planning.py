@@ -1,7 +1,7 @@
 """Readiness forecast, flight & maintenance plan, requirement planner, levers and loss waterfall."""
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ...optimize.fmp import Requirement, phase_ladder, plan_fleet
@@ -9,8 +9,10 @@ from ...optimize.requirement import plan_requirement
 from ...twin.montecarlo import forecast
 from ...twin.policies import BASELINE, TATPAR
 from ...twin.state import SQN_IDS
-from ...trust import audit
+from ...trust import audit, records
+from ...trust.auth import User
 from ..context import get_ctx
+from ..security import check, current_user
 
 router = APIRouter(prefix="/api", tags=["planning"])
 
@@ -84,16 +86,49 @@ def run_requirement(req: RequirementReq):
 
 
 class Approval(BaseModel):
-    persona: str
-    kind: str
-    summary: str
+    kind: str = Field(..., pattern="^[a-z_]{3,40}$")
+    summary: str = Field(..., max_length=500)
     payload: dict = {}
     decision: str = Field("approved", pattern="^(approved|rejected|deferred)$")
+    persona: str | None = None   # ignored: the ledger records the signed-in identity
 
 
 @router.post("/approve")
-def approve(a: Approval):
-    return audit.append(a.kind, a.persona, a.summary, a.payload, a.decision)
+def approve(a: Approval, user: User = Depends(current_user)):
+    check(user, f"approve:{a.kind}" if f"approve:{a.kind}" in _APPROVALS else "approve:readiness_plan")
+    e = audit.append(a.kind, user.role, a.summary, a.payload, a.decision, user=user.id)
+    if a.kind == "readiness_plan" and a.decision == "approved" and isinstance(a.payload.get("orders"), list):
+        e = {**e, "orders": records.issue(a.payload["orders"], e["seq"], user.role)}
+    return e
+
+
+@router.get("/orders")
+def get_orders():
+    os_ = sorted(records.orders(), key=lambda o: o["id"], reverse=True)
+    return {"orders": os_[:200], "outstanding": sum(o["status"] == "ISSUED" for o in os_),
+            "actioned": sum(o["status"] == "ACTIONED" for o in os_)}
+
+
+class OrderUpdate(BaseModel):
+    status: str = Field(..., pattern="^(ISSUED|ACTIONED|CANCELLED)$")
+    note: str = Field("", max_length=200)
+
+
+@router.post("/orders/{oid}")
+def update_order(oid: str, body: OrderUpdate, user: User = Depends(current_user)):
+    check(user, "order:update")
+    o = next((x for x in records.orders() if x["id"] == oid), None)
+    if o is None:
+        raise HTTPException(404, f"no order {oid}")
+    if user.role not in (o["owner"], "STN CDR"):
+        raise HTTPException(403, f"{oid} belongs to {o['owner']}; only {o['owner']} or STN CDR may update it")
+    o = records.set_status(oid, body.status, user.role, body.note)
+    audit.append("order_update", user.role, f"{oid} {body.status}: {o['text']}", {"order": oid, "note": body.note},
+                 "approved", user=user.id)
+    return o
+
+
+_APPROVALS = {"approve:readiness_plan", "approve:daily_signal"}
 
 
 @router.get("/audit")
@@ -109,3 +144,8 @@ def levers():
 @router.get("/waterfall")
 def waterfall():
     return get_ctx().bench("waterfall")
+
+
+@router.get("/sensitivity")
+def sensitivity():
+    return get_ctx().bench("sensitivity")

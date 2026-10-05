@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Planform, StateStamp, Stamp, type Balloon } from "../components/glyphs";
-import { Board, Chart, Code, ErrorBox, Kv, Loading, Meter, Panel } from "../components/ui";
+import { Chart } from "../components/Chart";
+import { Board, Code, ErrorBox, Kv, Loading, Meter, Panel } from "../components/ui";
 import { fmt, fmtPct, useApi } from "../lib/api";
 import { grid, tooltip, yVal } from "../lib/charts";
 import { useTheme } from "../lib/theme";

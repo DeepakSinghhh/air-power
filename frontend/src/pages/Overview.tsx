@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { dataDtg, dtg, usePersona } from "../components/Layout";
 import { PhaseTrack } from "../components/PhaseTrack";
-import { Board, Chart, ErrorBox, Loading, Panel, StateLegend } from "../components/ui";
+import { Chart } from "../components/Chart";
+import { Board, ErrorBox, Loading, Panel, StateLegend } from "../components/ui";
 import { fmt, fmtPct, postJSON, useApi } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { endLabel, fanSeries, grid, tooltip, xCat, yVal } from "../lib/charts";
 import { STATE_CODE, stateCss, useTheme } from "../lib/theme";
 
@@ -95,6 +97,7 @@ function Plate({ t }: { t: any }) {
 
 /** Cockpit-style alert list: warnings, cautions, advisories, status — each line links to the board that resolves it. */
 function Alerts({ d, fleet }: { d: any; fleet: any[] }) {
+  const ord = useApi<any>("/api/orders");
   type Row = { k: "w" | "c" | "a" | "s"; text: string; val: string; to: string } | null;
   const rows: Row[] = [];
   d.engine_watch.forEach((e: any) => rows.push({ k: e.engine_rul_fh_min < 10 ? "w" : "c", text: `${e.tail} ENG RUL`, val: `${String(Math.round(e.engine_rul_fh_min)).padStart(3, "0")} FH`, to: `/aircraft/${e.tail}` }));
@@ -106,6 +109,7 @@ function Alerts({ d, fleet }: { d: any; fleet: any[] }) {
   rows.push({ k: "a", text: "SPARES TRANSFERS RECOMMENDED", val: String(d.actions.transfers).padStart(2, "0"), to: "/sustainment" });
   rows.push({ k: "a", text: "AOG DEMANDS OPEN", val: String(d.actions.aog).padStart(2, "0"), to: "/sustainment" });
   rows.push({ k: "a", text: "DEPOT REPAIRS TO EXPEDITE", val: String(d.actions.expedite).padStart(2, "0"), to: "/sustainment" });
+  if (ord.data?.outstanding) rows.push({ k: "a", text: "ORDERS OUTSTANDING", val: String(ord.data.outstanding).padStart(2, "0"), to: "/planner" });
   rows.push(null);
   const cal = d.forecast.calibration;
   if (cal) rows.push({ k: "s", text: "FORECAST CALIBRATED (80 % BAND)", val: fmtPct(cal.coverage_p10_p90), to: "/proof" });
@@ -125,7 +129,9 @@ function Alerts({ d, fleet }: { d: any; fleet: any[] }) {
 /** Daily serviceability signal in military message format, composed from the same numbers on this board. */
 function Signal({ d }: { d: any }) {
   const { persona } = usePersona();
+  const { can } = useAuth();
   const [rel, setRel] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const fb = d.forecast.baseline, ft = d.forecast.tatpar, s = d.states, eng = d.engine_watch;
   const weak = [...d.squadrons].sort((a: any, b: any) => a.mc_now - b.mc_now)[0];
@@ -151,9 +157,12 @@ function Signal({ d }: { d: any }) {
   };
   const release = async () => {
     setBusy(true);
+    setErr(null);
     try {
-      const e = await postJSON<any>("/api/approve", { persona, kind: "daily_signal", summary: `Daily serviceability signal ${at}: ${d.mc_now}/${d.n_tails} MC`, payload: { text: plain } });
-      setRel({ ...e, persona, dtg: dtg(new Date()) });
+      const e = await postJSON<any>("/api/approve", { kind: "daily_signal", summary: `Daily serviceability signal ${at}: ${d.mc_now}/${d.n_tails} MC`, payload: { text: plain } });
+      setRel({ ...e, dtg: dtg(new Date()) });
+    } catch (x) {
+      setErr(String(x));
     } finally {
       setBusy(false);
     }
@@ -165,9 +174,10 @@ function Signal({ d }: { d: any }) {
         {head.slice(1).map(([k, v]) => <div key={k}><b className="inline-block w-[46px]">{k}</b>{v}</div>)}
         <span className="rule" />
         {paras.map((p) => <div key={p} className="pl-[22px] -indent-[22px]">{p}</div>)}
+        {err && <div className="mono text-[11px] noprint" style={{ color: "var(--crit)" }}>✕ {err}</div>}
         <div className="relative h-[70px] mt-1">
           <div className="absolute right-2 bottom-2 text-right">
-            <div>FOR {persona}</div>
+            <div>FOR STN CDR</div>
             <div className="border-t mt-0.5 w-[120px] ml-auto" style={{ borderColor: "var(--ink)" }} />
           </div>
           {rel ? (
@@ -175,7 +185,9 @@ function Signal({ d }: { d: any }) {
               <b>RELEASED</b><span>{rel.persona} · {rel.dtg}</span><span>LEDGER #{rel.seq} · {rel.hash.slice(0, 8)}</span>
             </span>
           ) : (
-            <button className="btn ink absolute left-0 bottom-2 noprint" onClick={release} disabled={busy}>{busy ? "LOGGING…" : `RELEASE AS ${persona}`}</button>
+            can("approve:daily_signal")
+              ? <button className="btn ink absolute left-0 bottom-2 noprint" onClick={release} disabled={busy}>{busy ? "LOGGING…" : `RELEASE AS ${persona}`}</button>
+              : <span className="absolute left-0 bottom-3 mono text-[11px] ink-3">RELEASE: STN CDR / SENGO ONLY</span>
           )}
         </div>
       </div>

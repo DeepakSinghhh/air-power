@@ -22,6 +22,7 @@ from ..optimize.fmp import phase_ladder, plan_fleet
 from ..optimize.requirement import plan_requirement
 from ..optimize.sparing import recommend, stock_override_from
 from ..federated import fedavg
+from . import sensitivity
 from ..prognostics.belief import Belief
 from ..twin.kpis import forecast_waterfall, history_waterfall, monthly_mc, pareto_causes
 from ..twin.montecarlo import forecast
@@ -117,6 +118,9 @@ def run(quick: bool = False) -> dict:
                      "total_delta": _ci(total)[0], "total_ci": _ci(total)[1],
                      "aircraft_equivalent": float(_ci(total)[0] * st.n_tails)})
 
+    # ---------------------------------------------------------------- sensitivity to the twin's assumptions
+    sens = sensitivity.run(quick)
+
     # ---------------------------------------------------------------- waterfall
     status = history.load("status")
     _save("waterfall", {
@@ -154,11 +158,31 @@ def run(quick: bool = False) -> dict:
         "rbs": {"budget_lakh": rbs_p["budget_lakh"], "A_current": rbs_p["availability_current"],
                 "A_rbs": rbs_p["availability_rbs"]},
         "federated": {r["regime"]: round(r["rmse"], 2) for r in fed["results"]},
+        "sensitivity": {"min_delta": sens["min_delta"], "max_delta": sens["max_delta"], "all_positive": sens["all_positive"]},
     }
     _save("summary", summary)
     write_evaluation_doc(metrics)
     print(json.dumps(summary, indent=1, default=_default))
     return summary
+
+
+def _snag_lines(sn: dict) -> list[str]:
+    """Snag-coder results graded against what was repaired, not against the rule that labelled it."""
+    va, km = sn.get("maintnet_vs_action"), sn.get("maintnet_keyword_masked")
+    if not va:
+        return [f"* Real MaintNet logbook problems (held-out): accuracy {sn['maintnet']['accuracy']:.1%} against weak labels."]
+    out = [
+        f"* Real MaintNet logbook problems ({va['n']} held-out entries whose repair action names a system): the model's chapter "
+        f"matches **what was actually repaired {va['model_accuracy']:.0%}** of the time, vs {va['keyword_rule_accuracy']:.0%} for the "
+        f"keyword rule on the problem text (which fires on {va['keyword_rule_coverage']:.0%} of entries) and {va['majority_class']:.0%} "
+        "for always guessing the most common chapter. The model reads only the problem text; the label comes from the action.",
+    ]
+    if km:
+        out.append(f"* With every rule keyword deleted from the problem text, accuracy is {km['accuracy']:.0%} against a "
+                   f"{km['chance_majority']:.0%} majority-class baseline — on this real text the model is not learning much "
+                   "beyond the keywords. Its practical value is coverage and robustness to spelling, abbreviations and "
+                   "Hinglish; a unit deployment should add a few hundred expert-coded entries (active learning).")
+    return out
 
 
 def write_evaluation_doc(metrics: dict) -> None:
@@ -203,8 +227,9 @@ def write_evaluation_doc(metrics: dict) -> None:
         "",
         "## 3b. Snag intelligence (ATA auto-coding)",
         "",
-        f"* Real MaintNet logbook problems (held-out, against keyword weak labels; {metrics['snag_nlp']['maintnet_weak_label_coverage']:.0%} of records labelled): "
-        f"accuracy **{metrics['snag_nlp']['maintnet']['accuracy']:.1%}**, macro-F1 {metrics['snag_nlp']['maintnet']['macro_f1']:.2f}.",
+    ]
+    lines += _snag_lines(metrics["snag_nlp"])
+    lines += [
         f"* Fleet snags (held-out tails): accuracy {metrics['snag_nlp']['fleet']['accuracy']:.1%} — easy by construction "
         "(templated synthetic text); Hinglish entries included.",
         "",
@@ -232,6 +257,9 @@ def write_evaluation_doc(metrics: dict) -> None:
         f"(₹{rb['prognostic']['budget_lakh']/100:.0f} crore): modelled supply availability "
         f"{rb['prognostic']['availability_current']:.0%} → {rb['prognostic']['availability_rbs']:.0%}. "
         "Fixing spares alone moves the bottleneck to the hangar (aircraft queue for a bay); the phase-flow plan removes it.",
+    ]
+    lines += sensitivity.doc_lines()
+    lines += [
         "",
         "## 6. Readiness-backward planning (demo requirement)",
         "",

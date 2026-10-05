@@ -216,6 +216,44 @@ a {
   height: 4px;
   background: var(--accent);
 }
+@media (max-width: 900px) {
+  .strip {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 6px 10px 0;
+  }
+  .brand {
+    border-right: none;
+  }
+  .strip .sw,
+  .strip .duty,
+  .strip .idtag {
+    margin-left: auto;
+  }
+  .strip .sw ~ .duty,
+  .strip .idtag ~ .sw {
+    margin-left: 0;
+  }
+  .tabs {
+    order: 10;
+    flex: 0 0 100%;
+    height: 40px;
+  }
+  .ribbon {
+    padding: 5px 10px;
+  }
+  /* wide ledgers scroll inside their panel instead of pushing the page sideways */
+  .panel,
+  .f700 {
+    overflow-x: auto;
+  }
+  .f700 {
+    padding-left: 38px;
+  }
+  .boardhead h1 {
+    font-size: 25px;
+  }
+}
 .dtg {
   display: flex;
   flex-direction: column;
@@ -244,6 +282,20 @@ a {
   font-size: 8.5px;
   color: var(--strip-mute);
   letter-spacing: 0.14em;
+}
+.idtag .signout {
+  font: inherit;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--strip-mute);
+  background: none;
+  border: 1px solid #5a6055;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.idtag .signout:hover {
+  color: #f4f1e6;
+  border-color: #f4f1e6;
 }
 .idtag select {
   background: transparent;

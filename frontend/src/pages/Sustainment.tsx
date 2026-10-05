@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Board, Chart, ErrorBox, Loading, Meter, Panel } from "../components/ui";
+import { Chart } from "../components/Chart";
+import { Board, ErrorBox, Loading, Meter, Panel } from "../components/ui";
 import { fmt, fmtPct, title, useApi } from "../lib/api";
 import { grid, MONO } from "../lib/charts";
 import { useTheme } from "../lib/theme";

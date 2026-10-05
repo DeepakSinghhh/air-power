@@ -10,6 +10,7 @@ from ...domain.environment import base_table
 from ...prognostics.engine_rul import hums_window
 from ...twin.state import CHECKS, ENGINE_IDX, LRU_IDS, SQN_IDS, STATE_LABELS, STATE_NAMES, TYPE_IDS
 from ..context import get_ctx
+from .intel import filed_for
 
 router = APIRouter(prefix="/api", tags=["fleet"])
 
@@ -147,7 +148,7 @@ def aircraft(tail: str):
     return {
         **row, "type_label": AIRCRAFT_TYPES[row["type"]].label,
         "lrus": lrus, "engines": engines,
-        "snags": sn[["snag_id", "date", "ata", "system", "lru", "text", "action", "finding"]].astype({"date": str}).to_dict("records"),
+        "snags": filed_for(tail) + sn[["snag_id", "date", "ata", "system", "lru", "text", "action", "finding"]].astype({"date": str}).to_dict("records"),
         "chronic": chronic[chronic["tail"] == tail].to_dict("records") if len(chronic) else [],
         "ata_names": ATA_CHAPTERS,
     }

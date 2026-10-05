@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Stamp } from "../components/glyphs";
-import { Board, Chart, ErrorBox, Loading, Meter, Panel } from "../components/ui";
-import { fmt, fmtPct, useApi } from "../lib/api";
+import { Chart } from "../components/Chart";
+import { Board, ErrorBox, Loading, Meter, Panel } from "../components/ui";
+import { fmt, fmtPct, postForm, useApi } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { grid, MONO, tooltip, yVal } from "../lib/charts";
 import { SQN_COLOR, useTheme } from "../lib/theme";
 
@@ -168,17 +170,27 @@ function DataPlate({ c }: { c: any }) {
 }
 
 function Validate() {
+  const { can } = useAuth();
   const [kind, setKind] = useState("snags");
   const [report, setReport] = useState<any>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [imported, setImported] = useState<any>(null);
   const upload = async (f: File) => {
     const fd = new FormData();
     fd.append("file", f);
-    const r = await fetch(`/api/data/validate?kind=${kind}`, { method: "POST", body: fd });
-    setReport(await r.json());
+    setFile(f);
+    setImported(null);
+    setReport(await postForm(`/api/data/validate?kind=${kind}`, fd).catch((e) => ({ ok: false, rows: 0, errors: [String(e)] })));
+  };
+  const doImport = async () => {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    setImported(await postForm("/api/snags/import", fd).catch((e) => ({ filed: 0, errors: [String(e)] })));
   };
   return (
     <div className="mt-4 pt-3 border-t" style={{ borderColor: "var(--rule)" }}>
-      <div className="cond text-[13px] font-semibold mb-1">Validate an export (nothing is stored)</div>
+      <div className="cond text-[13px] font-semibold mb-1">Validate an export · import snags into the tech log</div>
       <div className="flex flex-wrap items-center gap-2">
         <select className="input" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Export kind">
           <option value="snags">SNAGS (date, tail, text)</option><option value="stock">STOCK (stock_point, lru, qty)</option><option value="sorties">SORTIES (date, tail, hours)</option>
@@ -190,7 +202,12 @@ function Validate() {
           <div><b style={{ color: report.ok ? "var(--good)" : "var(--crit)" }}>{report.ok ? "ACCEPTED" : "REJECTED"}</b> · {fmt(report.rows)} ROWS · COMPLETENESS {fmtPct(report.completeness, 1)}</div>
           {report.errors?.map((e: string) => <div key={e} style={{ color: "var(--crit)" }}>✕ {e}</div>)}
           {report.warnings?.map((w: string) => <div key={w} style={{ color: "var(--warn)" }}>! {w}</div>)}
-          {report.ata_preview?.map((p: any, i: number) => <div key={i} className="ink-2">{p.text} → ATA {p.ata.ata} ({fmtPct(p.ata.p)})</div>)}
+          {report.ata_preview?.slice(0, 5).map((p: any, i: number) => <div key={i} className="ink-2">{p.text} → ATA {p.ata.ata} ({fmtPct(p.ata.p)})</div>)}
+          {report.ok && kind === "snags" && !imported && (can("data:import")
+            ? <button className="btn ink mt-1" onClick={doImport}>IMPORT {report.rows} ENTRIES INTO THE TECH LOG</button>
+            : <div className="ink-3">IMPORT NEEDS STN CDR / SENGO / LOG OFFR.</div>)}
+          {imported && <div style={{ color: imported.filed ? "var(--good)" : "var(--crit)" }}>
+            {imported.filed ? `FILED ${imported.filed} ENTRIES (${imported.first} … ${imported.last}) — SEE 07 TECH LOG` : `NOTHING FILED ${imported.errors?.join("; ") ?? ""}`}</div>}
         </div>
       )}
     </div>

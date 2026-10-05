@@ -1,15 +1,56 @@
 import { useEffect, useState } from "react";
 
-export async function getJSON<T = any>(path: string): Promise<T> {
-  const r = await fetch(path);
-  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+/* ---------- session token (per tab; cleared on sign-out or a 401) ---------- */
+const KEY = "tatpar-token";
+let token: string | null = (() => {
+  try {
+    return sessionStorage.getItem(KEY);
+  } catch {
+    return null;
+  }
+})();
+let onUnauthorized: () => void = () => {};
+
+export function setToken(t: string | null) {
+  token = t;
+  try {
+    if (t) sessionStorage.setItem(KEY, t);
+    else sessionStorage.removeItem(KEY);
+  } catch {
+    /* storage unavailable: token lives in memory only */
+  }
+}
+export const getToken = () => token;
+export const setUnauthorizedHandler = (f: () => void) => (onUnauthorized = f);
+export const authHeaders = (): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
+
+async function check(r: Response) {
+  if (r.status === 401) {
+    onUnauthorized();
+    throw new Error("401 session expired — sign in again");
+  }
+  if (!r.ok) {
+    let msg = await r.text();
+    try {
+      msg = JSON.parse(msg).detail ?? msg;
+    } catch {
+      /* not JSON */
+    }
+    throw new Error(`${r.status} ${msg}`);
+  }
   return r.json();
 }
 
+export async function getJSON<T = any>(path: string): Promise<T> {
+  return check(await fetch(path, { headers: authHeaders() }));
+}
+
 export async function postJSON<T = any>(path: string, body: unknown): Promise<T> {
-  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
-  return r.json();
+  return check(await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify(body) }));
+}
+
+export async function postForm<T = any>(path: string, form: FormData): Promise<T> {
+  return check(await fetch(path, { method: "POST", headers: authHeaders(), body: form }));
 }
 
 /** Fetch on mount; keeps the previous data while refetching (no layout jump). */
