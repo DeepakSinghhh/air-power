@@ -1,0 +1,131 @@
+{
+ "source": "CAMS global atmospheric composition via Open-Meteo Air-Quality API, hourly 2024-01-01..2024-12-31 (Asia/Kolkata)",
+ "url": "https://open-meteo.com/en/docs/air-quality-api",
+ "bases": {
+  "jodhpur": {
+   "lat": 26.300003,
+   "lon": 73.100006,
+   "grid_elevation_m": 215.0,
+   "dust_mean": 84.677,
+   "dust_p95": 373.0,
+   "aerosol_optical_depth_mean": 0.348,
+   "aerosol_optical_depth_p95": 0.74,
+   "pm10_mean": 64.295,
+   "pm10_p95": 176.5,
+   "dust_monthly_mean": [
+    5.78,
+    33.76,
+    99.73,
+    156.09,
+    224.61,
+    256.87,
+    134.56,
+    39.92,
+    35.33,
+    16.63,
+    10.26,
+    3.17
+   ]
+  },
+  "leh": {
+   "lat": 34.1,
+   "lon": 77.5,
+   "grid_elevation_m": 3288.0,
+   "dust_mean": 13.39,
+   "dust_p95": 41.0,
+   "aerosol_optical_depth_mean": 0.069,
+   "aerosol_optical_depth_p95": 0.15,
+   "pm10_mean": 9.38,
+   "pm10_p95": 18.9,
+   "dust_monthly_mean": [
+    9.83,
+    6.81,
+    12.8,
+    18.49,
+    37.34,
+    24.86,
+    8.04,
+    6.39,
+    7.77,
+    12.51,
+    11.68,
+    4.03
+   ]
+  },
+  "tezpur": {
+   "lat": 26.700005,
+   "lon": 92.80002,
+   "grid_elevation_m": 73.0,
+   "dust_mean": 5.042,
+   "dust_p95": 22.0,
+   "aerosol_optical_depth_mean": 0.567,
+   "aerosol_optical_depth_p95": 1.36,
+   "pm10_mean": 46.482,
+   "pm10_p95": 90.3,
+   "dust_monthly_mean": [
+    1.72,
+    10.88,
+    9.56,
+    11.87,
+    8.92,
+    11.99,
+    0.92,
+    0.64,
+    0.02,
+    1.62,
+    1.03,
+    1.9
+   ]
+  },
+  "thanjavur": {
+   "lat": 10.700005,
+   "lon": 79.100006,
+   "grid_elevation_m": 76.0,
+   "dust_mean": 2.917,
+   "dust_p95": 13.0,
+   "aerosol_optical_depth_mean": 0.336,
+   "aerosol_optical_depth_p95": 0.69,
+   "pm10_mean": 27.064,
+   "pm10_p95": 52.2,
+   "dust_monthly_mean": [
+    0.39,
+    2.65,
+    2.72,
+    1.68,
+    2.64,
+    5.22,
+    8.25,
+    3.03,
+    7.41,
+    0.4,
+    0.45,
+    0.25
+   ]
+  },
+  "pune": {
+   "lat": 18.599998,
+   "lon": 73.90001,
+   "grid_elevation_m": 590.0,
+   "dust_mean": 9.883,
+   "dust_p95": 39.0,
+   "aerosol_optical_depth_mean": 0.41,
+   "aerosol_optical_depth_p95": 0.9,
+   "pm10_mean": 40.525,
+   "pm10_p95": 89.2,
+   "dust_monthly_mean": [
+    0.79,
+    11.61,
+    16.47,
+    12.41,
+    27.52,
+    15.93,
+    5.45,
+    9.26,
+    11.33,
+    3.21,
+    3.9,
+    0.96
+   ]
+  }
+ }
+}

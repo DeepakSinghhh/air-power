@@ -1,0 +1,91 @@
+"""Logbook-style snag and action text for synthetic defects (English, abbreviations, Hinglish).
+
+Wording mimics technical-log shorthand (upper case, abbreviations such as PR, LT, SYS, U/S,
+S/N, OPS CHK). Intermittent / BITE-reset cues are emitted with the probabilities the twin
+decided, so NFF-prone snags read differently from hard failures — as they do in real logs.
+"""
+from __future__ import annotations
+
+import numpy as np
+
+SYMPTOMS: dict[str, list[str]] = {
+    "ECS_TURB": ["COCKPIT TEMP HIGH, ECS COOLING INADEQUATE", "ECS TURBINE NOISY ON GND RUN",
+                 "AVIONICS COOLING CAUTION LT ON DURING TAXI"],
+    "CPC": ["CABIN ALT EXCEEDS LIMIT IN CLIMB", "CABIN PR FLUCTUATING AT FL250", "CPC FAULT ON MFD"],
+    "VUHF": ["V/UHF RADIO NO TX ON PRESET 3", "COMM 1 WEAK AND GARBLED", "UHF SQUELCH INOP"],
+    "GEN": ["GEN 1 FAIL CAUTION IN FLT", "AC GEN OFF LINE, BUS TIE CLOSED", "GEN FREQ FLUCTUATING"],
+    "TRU": ["DC BUS VOLTAGE LOW ON GND", "TRU 2 FAIL LT ON", "DC ESS BUS UNDER VOLTAGE"],
+    "SEAT_SEQ": ["SEAT SEQUENCER BIT FAIL ON PRE FLT", "EJECTION SEQUENCER CAUTION ON MFD"],
+    "FCC": ["FCS CHANNEL 2 FAIL DURING TAKE OFF", "FLCS WARNING, DEGRADED MODE", "FCC BIT FAIL ON START UP"],
+    "ACT": ["LH ELEVON ACTUATOR SLOW RESPONSE", "RUDDER ACTUATOR LEAK OBSERVED", "AILERON SERVO JERKY ON CHECK"],
+    "FBP": ["FUEL BOOST PUMP LOW PR LT ON", "FWD BOOST PUMP NOISY", "FUEL PR FLUCTUATION IN CLIMB"],
+    "FQP": ["FUEL QTY INDICATION ERRATIC", "FUEL GAUGE SHOWS 300 KG MISMATCH", "FQIS FAULT ON MFD"],
+    "HYD_PUMP": ["HYD PR FLUCTUATING ON LH SYS DURING TAXI", "HYD 1 PR LOW CAUTION LT ON", "HYD PUMP NOISY AT IDLE"],
+    "HYD_ACC": ["HYD ACCUMULATOR PRE-CHARGE LOW", "BRAKE ACC PR DROPS QUICKLY", "ACC PR GAUGE READS LOW"],
+    "MFD": ["CENTRE MFD BLANK IN FLT", "LH MFD FLICKERING", "MFD DISPLAY FROZE DURING SORTIE"],
+    "BRAKE": ["RH MAIN WHEEL BRAKE WORN BEYOND LIMIT", "BRAKE FADE ON LANDING ROLL", "LH BRAKE DRAGGING"],
+    "NWS": ["NWS DISENGAGES DURING TAXI", "NOSE WHEEL SHIMMY ON TAKE OFF ROLL", "NWS FAIL LT ON"],
+    "INS": ["INS ALIGNMENT FAIL", "NAV DRIFT EXCESSIVE, INS POSITION ERROR", "INS/GPS MISMATCH WARNING"],
+    "ADC": ["IAS DISAGREE BETWEEN ADC 1 AND 2", "ALT INDICATION ERRATIC", "ADC FAIL CAUTION ON MFD"],
+    "RADAR": ["RADAR TX FAIL IN A2A MODE", "RADAR RANGE DEGRADED", "RADAR BIT FAIL ON GND"],
+    "RALT": ["RAD ALT INDICATION ERRATIC BELOW 500 FT", "RADALT FLAG ON", "RAD ALT NOT TRACKING"],
+    "BAV": ["BLEED AIR LEAK CAUTION", "BLEED VALVE FAILS TO CLOSE ON SHUT DOWN", "BLEED OVERTEMP LT ON"],
+    "GTS": ["GTS FAILS TO START", "GTS EGT HIGH DURING START", "STARTER HUNG START ON NO 2 ENG"],
+    "FCU": ["ENG RPM HUNTING AT IDLE", "ENG FUEL CONTROL FAULT LT ON", "THROTTLE RESPONSE SLUGGISH"],
+    "EVM": ["ENG VIB INDICATION HIGH ON NO 1", "EVM FAULT ON EICAS", "VIB READING ERRATIC"],
+    "OPT": ["ENG OIL PR INDICATION LOW", "OIL PR FLUCTUATING ON NO 2 ENG", "OIL PR GAUGE ERRATIC"],
+    "ENGINE": ["NO 1 ENG EGT MARGIN LOW, PERFORMANCE DETERIORATION", "ENG SURGE DURING AFTERBURNER",
+               "ENG THRUST LOW ON TAKE OFF, EGT HIGH"],
+}
+
+HINGLISH = {
+    "DURING TAXI": "TAXI KE DAURAN", "IN FLT": "FLT MEIN", "ON GND": "GROUND PAR",
+    "FLUCTUATING": "MEIN FLUCTUATION", "NOISY": "SE AWAAZ AA RAHI HAI", "LT ON": "LIGHT JAL RAHI HAI",
+}
+
+INTERMITTENT = ["INTERMITTENT", "OCCURRED TWICE, NOT ON 3RD SORTIE", "SNAG COMES AND GOES",
+                "COULD NOT BE REPRODUCED ON GND"]
+BITE_RESET = ["FAULT CLEARED ON BITE RESET", "BIT PASSED AFTER POWER CYCLE", "RESET OK, SNAG NOT REPEATED"]
+REPORTERS = ["PILOT", "PILOT", "PILOT", "GND CREW", "SERVICING CREW"]
+
+ACTION_CONFIRMED = ["REPLACED {item} S/N {sn}. OPS CHK SATIS.", "{item} FOUND U/S, REPLACED. GND RUN OK.",
+                    "REMOVED U/S {item}, FITTED SERVICEABLE UNIT. LEAK/OPS CHK OK."]
+ACTION_NFF = ["REPLACED {item} AS TROUBLESHOOTING. BITE OK.", "{item} REMOVED AS PRECAUTION, SNAG NOT REPRODUCED.",
+              "SUBSTITUTED {item}. SNAG NOT OBSERVED ON GND RUN."]
+ACTION_RETEST = ["CONNECTOR CLEANED AND RESEATED, BITE OK. MONITOR.", "GND RE-TEST SATIS. NO REMOVAL. MONITOR 3 SORTIES."]
+
+ITEM_ABBR = {
+    "ECS_TURB": "ECS TURBINE", "CPC": "CPC", "VUHF": "V/UHF SET", "GEN": "AC GEN", "TRU": "TRU",
+    "SEAT_SEQ": "SEAT SEQUENCER", "FCC": "FCC", "ACT": "ACTUATOR", "FBP": "BOOST PUMP", "FQP": "FUEL PROBE",
+    "HYD_PUMP": "HYD PUMP", "HYD_ACC": "HYD ACCUMULATOR", "MFD": "MFD", "BRAKE": "BRAKE UNIT", "NWS": "NWS ACTUATOR",
+    "INS": "INS", "ADC": "ADC", "RADAR": "RADAR TX", "RALT": "RAD ALT", "BAV": "BLEED VALVE", "GTS": "GTS",
+    "FCU": "FCU", "EVM": "EVM", "OPT": "OIL PR TXR", "ENGINE": "ENGINE",
+}
+
+
+def snag_text(lru: str, intermittent: bool, bite_reset: bool, rng: np.random.Generator) -> str:
+    text = rng.choice(SYMPTOMS[lru])
+    if rng.random() < 0.18:  # Hinglish entry
+        for en, hi in HINGLISH.items():
+            if en in text:
+                text = text.replace(en, hi)
+                break
+    cues = []
+    if intermittent:
+        cues.append(rng.choice(INTERMITTENT))
+    if bite_reset:
+        cues.append(rng.choice(BITE_RESET))
+    if cues:
+        text = text + ". " + ". ".join(cues)
+    return text
+
+
+def action_text(lru: str, finding: str, serial: int, rng: np.random.Generator) -> str:
+    item = ITEM_ABBR[lru]
+    if finding == "NFF":
+        tpl = rng.choice(ACTION_NFF)
+    elif finding == "RETEST":
+        tpl = rng.choice(ACTION_RETEST)
+    else:
+        tpl = rng.choice(ACTION_CONFIRMED)
+    return tpl.format(item=item, sn=f"{lru[:3]}-{serial:05d}")
