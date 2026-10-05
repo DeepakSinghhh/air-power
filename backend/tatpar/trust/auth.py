@@ -35,7 +35,12 @@ PERMISSIONS: dict[str, set[str]] = {
     "approve:daily_signal": {"STN CDR", "SENGO"},
     "order:update": {"STN CDR", "SENGO", "LOG OFFR", "DEPOT MGR"},
     "snags:file": {"STN CDR", "SENGO"},
-    "data:import": {"STN CDR", "SENGO", "LOG OFFR"},
+    "data:import": {"STN CDR", "SENGO", "LOG OFFR"},           # legacy tech-log CSV import
+    "data:import:hums": {"STN CDR", "SENGO"},
+    "data:import:snags": {"STN CDR", "SENGO"},
+    "data:import:stock": {"STN CDR", "LOG OFFR"},
+    "data:import:repairs": {"STN CDR", "LOG OFFR", "DEPOT MGR"},
+    "data:reset": {"STN CDR"},
 }
 
 # id, display name, role, demo PIN — notional people, prototype only

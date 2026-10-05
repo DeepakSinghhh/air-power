@@ -142,9 +142,12 @@ def test_orders_close_the_loop(client, tmp_path, monkeypatch):
 
 
 def test_file_and_import_snags(client, tmp_path, monkeypatch):
-    from tatpar.trust import records
+    from tatpar.ingest import store
+    from tatpar.trust import audit, records
 
     monkeypatch.setattr(records, "FILED", tmp_path / "filed.jsonl")
+    monkeypatch.setattr(store, "DIR", tmp_path / "ingest")
+    monkeypatch.setattr(audit, "LOG", tmp_path / "log.jsonl")
     r = client.post("/api/snags/file", json={"tail": "HF-101", "text": "hyd pr fluctuating on lh sys during taxi", "lru": "HYD_PUMP"}).json()
     assert r["entry"]["snag_id"] == "TL-0001" and r["entry"]["ata"] == 29 and r["entry"]["filed_by"] == "STN CDR"
     assert client.get("/api/snags/recent").json()[0]["snag_id"] == "TL-0001"

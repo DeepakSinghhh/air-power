@@ -1,24 +1,20 @@
 """Snag intelligence, data fabric and model cards."""
 from __future__ import annotations
 
-import io
-
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from ...domain.catalog import LRU_TYPES, SQUADRONS
-from ...twin.state import SQN_IDS
+from ...domain.catalog import LRU_TYPES
 from ...prognostics.leaks import nff_features
 from ...trust import records
 from ...trust.auth import User
 from ...twin.state import SP_IDS
 from ..context import get_ctx
-from ..security import require
+from ..security import current_user, require
 
 router = APIRouter(prefix="/api", tags=["intel"])
-SQUADRONS_BY_IDX = dict(enumerate(SQN_IDS))
 
 
 class SnagReq(BaseModel):
@@ -62,11 +58,9 @@ def filed_for(tail: str | None = None) -> list[dict]:
 
 
 def _file(ctx, tail: str, text: str, lru: str | None, date: str, by: str, source: str) -> dict:
-    t = ctx.state.tail_ids.index(tail)
-    a = ctx.nlp.classify(text, 1)[0]
-    return records.file_snag({"date": date, "tail": tail, "squadron": SQUADRONS_BY_IDX[int(ctx.state.tail_sqn[t])], "ata": a["ata"],
-                              "system": a["name"], "ata_p": a["p"], "lru": lru or "", "text": text.strip().upper()[:400],
-                              "filed_by": by, "source": source})
+    from ...ingest.apply import file_snag_entry
+
+    return file_snag_entry(ctx, tail, text, lru, date, by, source)
 
 
 @router.get("/snags/recent")
@@ -107,11 +101,15 @@ SOURCES = [
     ("snags", "Technical log snags (e-MMS / Form-700 style)", "snags", "Snag", "Failure / malfunction report", "SD"),
     ("removals", "Removals & shop findings", "removals", "Removal, ShopFinding", "Maintenance task, shop findings", "HA"),
     ("checks", "Scheduled checks", "checks", "MaintenanceEvent", "Maintenance task performed", "HA"),
-    ("supply", "Spares transactions (IMMOLS style)", "supply", "SupplyTransaction", "Material supply (S2000M)", "—"),
+    ("supply", "Spares stock & transactions (IMMOLS style)", "supply", "SupplyTransaction, StockLevel", "Material supply (S2000M)", "—"),
     ("repairs", "BRD / HAL repair orders", "repairs", "RepairOrder", "Repair / overhaul event", "—"),
     ("positions", "Installed configuration (serials, TSO)", "positions", "InstalledPosition, SerialisedItem", "Product breakdown, serialised item", "—"),
     ("status", "Daily aircraft status", "status", "StatusDay", "Availability data", "AG"),
 ]
+
+
+# common-data-model source -> data contract a unit can import it through (tatpar.ingest.contracts)
+INGEST_SOURCE = {"hums": "hums", "snags": "snags", "supply": "stock", "repairs": "repairs", "sorties": "sorties"}
 
 
 def _quality(df: pd.DataFrame) -> dict:
@@ -123,8 +121,11 @@ def _quality(df: pd.DataFrame) -> dict:
 
 @router.get("/data/sources")
 def sources():
+    from ...ingest import store
+
     ctx = get_ctx()
     out = []
+    last_import = {e["source"]: e for e in store.lineage()}
     for key, label, table, entity, s5000f, osacbm in SOURCES:
         df = ctx.tables.get(table)
         q = _quality(df)
@@ -134,7 +135,11 @@ def sources():
         consistency = 1.0
         if table == "snags" and len(df):
             consistency = float(df["removal_id"].notna().mean() + (df["finding"] == "RETEST").mean())
+        imp = last_import.get(INGEST_SOURCE.get(key, ""))
+        if imp:
+            last = 0             # a unit export arrived since the last build
         out.append({"key": key, "label": label, "entity": entity, "s5000f": s5000f, "osa_cbm": osacbm,
+                    "ingest": INGEST_SOURCE.get(key), "last_import": imp,
                     **q, "freshness_days": last, "consistency": round(min(1.0, consistency), 4),
                     "score": round(0.5 * q.get("completeness", 0) + 0.3 * consistency + 0.2 * (1.0 if (last or 0) <= 2 else 0.5), 3)})
     lineage = {
@@ -152,76 +157,38 @@ def sources():
     return {"sources": out, "lineage": lineage, "today": ctx.today}
 
 
-REQUIRED = {
-    "snags": ["date", "tail", "text"],
-    "stock": ["stock_point", "lru", "qty"],
-    "sorties": ["date", "tail", "hours"],
-}
-
-
-def _read_csv(raw: bytes) -> tuple[pd.DataFrame | None, str | None]:
-    try:
-        return pd.read_csv(io.BytesIO(raw)), None
-    except Exception as e:  # noqa: BLE001
-        return None, f"Could not parse CSV: {e}"
-
-
 @router.post("/data/validate")
-async def validate(kind: str, file: UploadFile = File(...)):
-    """Validate an uploaded CSV export against the common data model (no data is stored)."""
-    df, err = _read_csv(await file.read())
-    if err:
-        return {"ok": False, "errors": [err]}
-    return _check(kind, df)
+async def validate(kind: str, file: UploadFile = File(...), user: User = Depends(current_user)):
+    """Validate an uploaded CSV export against its data contract (no data is stored). Kept for older clients;
+    see /api/ingest/{source}/validate."""
+    from ...ingest.apply import ingest
+    from ...ingest.contracts import CONTRACTS
+
+    if kind not in CONTRACTS:
+        raise HTTPException(422, f"unknown kind {kind!r}")
+    rep = ingest(get_ctx(), kind, await file.read(), file.filename or "upload.csv", user, dry_run=True)["report"]
+    return _legacy(rep)
+
+
+def _legacy(rep: dict) -> dict:
+    """Older response shape: rejected rows reported as warnings."""
+    warn = list(rep.get("warnings", []))
+    if rep.get("rejected"):
+        first = rep["row_errors"][0] if rep.get("row_errors") else None
+        warn.insert(0, f"{rep['rejected']} rows rejected" + (f" (line {first['line']}: {first['reasons'][0]})" if first else ""))
+    return {**rep, "warnings": warn}
 
 
 @router.post("/snags/import")
 async def import_snags(file: UploadFile = File(...), user: User = Depends(require("data:import"))):
-    """Validate an e-MMS / Form-700 style CSV export and file every row with a known tail into the tech log."""
-    df, err = _read_csv(await file.read())
-    if err:
-        return {"ok": False, "errors": [err], "filed": 0}
-    rep = _check("snags", df)
-    if not rep["ok"]:
-        return {**rep, "filed": 0}
-    ctx = get_ctx()
-    df.columns = [c.strip().lower() for c in df.columns]
-    filed = []
-    for _, r in df.head(500).iterrows():
-        tail, text = str(r["tail"]).strip(), str(r["text"])
-        if tail in ctx.state.tail_ids and text.strip() and text != "nan":
-            lru = str(r["lru"]) if "lru" in df.columns and str(r["lru"]) in LRU_TYPES else None
-            filed.append(_file(ctx, tail, text, lru, str(pd.to_datetime(r["date"]).date()), user.role, "IMPORT")["snag_id"])
-    return {**rep, "filed": len(filed), "first": filed[0] if filed else None, "last": filed[-1] if filed else None}
+    """Validate an e-MMS / Form-700 style CSV export and file every valid row into the tech log.
+    Kept for older clients; see POST /api/ingest/snags."""
+    from ...ingest.apply import ingest
 
-
-def _check(kind: str, df: pd.DataFrame) -> dict:
-    cols = [c.strip().lower() for c in df.columns]
-    df.columns = cols
-    errors, warnings = [], []
-    need = REQUIRED.get(kind, [])
-    missing = [c for c in need if c not in cols]
-    if missing:
-        errors.append(f"Missing required columns: {', '.join(missing)}")
-    ctx = get_ctx()
-    if "tail" in cols:
-        unknown = sorted(set(df["tail"].astype(str)) - set(ctx.state.tail_ids))
-        if unknown:
-            warnings.append(f"{len(unknown)} tail numbers not in fleet register (e.g. {', '.join(unknown[:3])})")
-    if "lru" in cols:
-        unknown = sorted(set(df["lru"].astype(str)) - set(LRU_TYPES))
-        if unknown:
-            warnings.append(f"{len(unknown)} part types not in catalogue (e.g. {', '.join(unknown[:3])}) — entity resolution needed")
-    if "date" in cols:
-        bad = pd.to_datetime(df["date"], errors="coerce").isna().sum()
-        if bad:
-            errors.append(f"{bad} rows with unparseable dates")
-    out = {"ok": not errors, "rows": int(len(df)), "columns": cols, "errors": errors, "warnings": warnings,
-           "completeness": round(float(1 - df.isna().mean().mean()), 4)}
-    if kind == "snags" and "text" in cols and not errors:
-        sample = df["text"].astype(str).head(20).tolist()
-        out["ata_preview"] = [{"text": t, "ata": ctx.nlp.classify(t, 1)[0]} for t in sample]
-    return out
+    out = ingest(get_ctx(), "snags", await file.read(), file.filename or "upload.csv", user)
+    res = out.get("result") or {}
+    return {**_legacy(out["report"]), "filed": res.get("filed", 0), "first": res.get("first"), "last": res.get("last"),
+            "repeats": res.get("repeats", [])}
 
 
 def _finite(x):

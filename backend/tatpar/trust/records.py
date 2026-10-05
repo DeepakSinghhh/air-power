@@ -49,6 +49,16 @@ def file_snag(entry: dict) -> dict:
         return e
 
 
+def remove_imported_snags() -> int:
+    """Drop entries that came from a data import (entries filed in the ops room stay)."""
+    with _lock:
+        keep = [e for e in _read(FILED) if e.get("source") != "IMPORT"]
+        n = len(_read(FILED)) - len(keep)
+        if n:
+            FILED.write_text("".join(json.dumps(e, default=str) + "\n" for e in keep))
+        return n
+
+
 # ------------------------------------------------------------------ orders
 def order_text(d: dict) -> str:
     t = d.get("type")

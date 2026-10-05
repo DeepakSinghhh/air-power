@@ -21,7 +21,7 @@ The interface is built for the people who run a station, not as a generic dashbo
 | **05 Stores** | Supply-chain schematic (squadron stores ↔ equipment depot ↔ BRD / HAL), RBS frontier, AOG decision board, transfers, expedites, NFF and rogue units |
 | **06 After-Action** | Loss waterfall, lever staircase, **does the gain hold?** (sensitivity to every assumption), readiness waves |
 | **07 Tech Log** | File a snag in a Form-700 line (Hinglish welcome) → it is recorded in the aircraft's log, coded to an ATA chapter, with a removal decision, what fixed it before, and similar entries |
-| **08 Proof** | Provenance and lineage, CSV export validation **and import into the tech log**, calibration evidence, federated learning, model data plates, the signed hash-chained decision ledger |
+| **08 Proof** | Provenance and lineage, the **data fabric** (import HUMS downloads, the tech log, IMMOLS stock and BRD/HAL repair status against published contracts) and its import register, calibration evidence, federated learning, model data plates, the signed hash-chained decision ledger |
 
 | Sign-in | Released signal | Approved operation order |
 |---|---|---|
@@ -58,9 +58,29 @@ Seven other public projects target PS 26249; all predict *which part fails*. TAT
 
 Plus: **Readiness-Based Sparing (two-echelon VARI-METRIC) with prognostic demand**, **No-Fault-Found / rogue-unit / cannibalisation** analytics, a **Base Environmental Severity Index** from real CAMS dust data, **Hinglish-aware snag intelligence**, **federated learning** across bases, and a fully **offline** deployment.
 
+## Feed it your own data
+
+The problem statement's core complaint is that health-monitoring, technical-record, spares and repair-agency data are not integrated. TATPAR takes each of them as a CSV export (or over its REST API), checks it against a published contract, and lets it change the live picture:
+
+| Source (unit system) | What an import changes | Who may import |
+|---|---|---|
+| **HUMS** engine download (ground station) | The engine's remaining life is re-predicted with a calibrated interval and module attribution; alerts, risk, Monte-Carlo forecasts, engine protection in the flight plan and the planner all use the new interval | STN CDR, SENGO |
+| **Technical log** (e-MMS / Form-700) | Entries filed in the aircraft's log, ATA-coded, checked for repeat defects | STN CDR, SENGO |
+| **Stock levels** (IMMOLS) | Serviceable stock at each base store and the equipment depot | STN CDR, LOG OFFR |
+| **Repair orders** (BRD / HAL) | Return dates and condemnations in the repair pipeline | STN CDR, LOG OFFR, DEPOT MGR |
+
+Every row is validated (types, units, ranges, known tails / serials / stock points, duplicates) and rejected rows say why; every import is hashed, recorded with the signed-in user and written to the decision ledger. Contracts: [docs/05-data-contracts.md](docs/05-data-contracts.md). Samples that pass: [data/samples](data/samples). Try it on **08 PROOF → Data fabric**, or stream post-flight downloads into a running server with the simulated edge gateway:
+
+```bash
+cd backend && .venv/bin/python -m tatpar.ingest.gateway      # replays an engine the models never saw; prints TATPAR's interval next to the hidden truth
+.venv/bin/python -m tatpar.ingest reset                       # remove all imported data (or REMOVE ALL IMPORTS on 08 PROOF as STN CDR)
+```
+
+The layouts are prototype formats; a unit maps its real exports onto them (a column mapping). Flying records are validated only; usage feeds the models at the next retrain.
+
 ## Submission pack
 - [Idea deck (PPTX)](docs/sih-ppt/TATPAR_SIH26249_Idea.pptx) · [PDF](docs/sih-ppt/TATPAR_SIH26249_Idea.pdf) — 6 slides in SIH template order (fill Team ID / Team Name)
-- [01 · Problem research & competitor gap analysis](docs/01-research.md) · [02 · Solution](docs/02-solution.md) · [03 · Architecture](docs/03-architecture.md) · [04 · Evaluation](docs/04-evaluation.md)
+- [01 · Problem research & competitor gap analysis](docs/01-research.md) · [02 · Solution](docs/02-solution.md) · [03 · Architecture](docs/03-architecture.md) · [04 · Evaluation](docs/04-evaluation.md) · [05 · Data contracts](docs/05-data-contracts.md)
 - [Demo video script](docs/demo-script.md) · [Screenshots](docs/screenshots)
 
 ## Run it
@@ -74,9 +94,19 @@ make bench      # Monte-Carlo studies, RBS, plans, federated learning, sensitivi
 make ui         # build the React app
 make serve      # http://localhost:8000
 ```
+
+**Windows (PowerShell, no `make`):**
+```powershell
+py -3.11 -m venv backend\.venv
+backend\.venv\Scripts\python -m pip install -c backend\constraints.txt -e "backend[dev]"
+cd frontend; npm install; npm run build; cd ..\backend
+.venv\Scripts\python -m tatpar.pipelines.build_all      # = make train
+.venv\Scripts\python -m tatpar.pipelines.bench          # = make bench (~12 min)
+.venv\Scripts\python -m uvicorn tatpar.api.main:app --port 8000   # then open http://localhost:8000
+```
 **Sign in:** the prototype ships a notional roster, one user per role (STN CDR, SENGO, LOG OFFR, DEPOT MGR, AUDITOR); the demo PINs are printed on the sign-in screen. For a unit deployment set `TATPAR_USERS` (roster JSON with PBKDF2 hashes from `python -m tatpar.trust.auth hash <pin>`) and `TATPAR_SECRET`; the demo PINs then stop working.
 
-Development: `make dev` (API on :8000, Vite on :5173 with hot reload). Tests: `make test` (backend tests) and, with the server running, `cd frontend && npm run e2e` (drives the real UI: sign-in, role gating, filing, approving, actioning an order, all boards day/night, phone width). CI runs both on every push (`.github/workflows/ci.yml`).
+Development: `make dev` (API on :8000, Vite on :5173 with hot reload). Tests: `make test` (backend tests) and, with the server running, `cd frontend && npm run e2e` (drives the real UI: sign-in, role gating, filing, approving, actioning an order, importing a HUMS download, all boards day/night, phone width). CI runs both on every push (`.github/workflows/ci.yml`).
 
 **Offline / air-gapped:** `docker compose up --build` bakes datasets, models and the benchmark cache into the image at build time; the container then runs with no network.
 
@@ -96,13 +126,31 @@ backend/tatpar/
   nlp/           ATA auto-coding, similar-case retrieval, fix effectiveness
   optimize/      CP-SAT flight & maintenance planning, VARI-METRIC sparing, advisors, requirement planner
   federated/     FedAvg across bases
-  trust/         hash-chained audit log
+  ingest/        data contracts, validation, imports into the live picture, HUMS edge gateway
+  trust/         sign-in, roles, hash-chained audit log, orders and tech-log records
   api/           FastAPI routers (+ offline copilot)
   pipelines/     build_all (data → models), bench (experiments → docs)
 frontend/        React + TypeScript + Tailwind + ECharts ops room (8 boards, day/night, fonts bundled offline)
 notebooks/       Colab GPU notebooks
 docs/            research, solution, architecture, evaluation, deck, screenshots
 ```
+
+## Implementation status
+
+| Part | Status |
+|---|---|
+| Fleet Twin, Monte-Carlo forecast, policy levers, sensitivity study | Built; notional 64-aircraft fleet |
+| Engine RUL with conformal intervals and module attribution | Built; trained and tested on NASA C-MAPSS |
+| LRU survival, NFF predictor, rogue-unit and chronic-defect detectors | Built; trained on the notional fleet's records |
+| CP-SAT flight & maintenance plan, VARI-METRIC sparing, transfers, cannibalisation, requirement planner | Built |
+| Data import for HUMS, tech log, IMMOLS stock, BRD/HAL repairs; HUMS edge gateway | Built with prototype CSV/REST formats |
+| Snag NLP (ATA coding, similar cases, Hinglish) | Built; MaintNet + synthetic text |
+| Sign-in, server-side roles, signed ledger, orders tracked to completion | Built; demo roster |
+| Federated learning | Built as a single-process simulation of five bases; Flower over AFNET is sketched in a notebook |
+| Duty-officer copilot | Built: deterministic intent router over the platform's tools; optional local LLM for phrasing |
+| Native e-MMS / IMMOLS / HUMS ground-station formats, MQTT/Kafka transport | Not built — production path (column mapping onto the contracts) |
+| Retraining from imported data | Not built — imports update beliefs and state now; models retrain with `make train` |
+| Real IAF data | None used |
 
 ## Honesty notes
 - No classified or real IAF data is used. Public data: NASA C-MAPSS (engine degradation), MaintNet (aviation logbooks), CAMS 2024 dust via Open-Meteo. Everything else is a notional fleet with **hidden ground truth**; the analytics learn only from the records the twin emits.

@@ -74,6 +74,34 @@ export function useApi<T = any>(path: string | null, deps: unknown[] = []) {
   return { data, error, loading, setData };
 }
 
+/** Import counter from the server: changes whenever a unit's data is imported, so boards can refetch. */
+export function useIngestStamp(ms = 4000) {
+  const [seq, setSeq] = useState(0);
+  useEffect(() => {
+    let live = true;
+    const tick = () => getJSON<{ seq: number }>("/api/ingest/stamp").then((d) => live && setSeq(d.seq)).catch(() => {});
+    tick();
+    const id = setInterval(tick, ms);
+    return () => {
+      live = false;
+      clearInterval(id);
+    };
+  }, [ms]);
+  return seq;
+}
+
+/** Download a signed-in GET as a file. */
+export async function download(path: string, filename: string) {
+  const r = await fetch(path, { headers: authHeaders() });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const fmtPct = (x: number | null | undefined, d = 0) => (x == null ? "—" : `${(x * 100).toFixed(d)}%`);
 export const fmt = (x: number | null | undefined, d = 0) =>
   x == null ? "—" : x.toLocaleString("en-IN", { maximumFractionDigits: d, minimumFractionDigits: d });

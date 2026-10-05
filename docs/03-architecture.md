@@ -6,7 +6,7 @@
 
 | Layer | Responsibility | Key technology | Code |
 |---|---|---|---|
-| 1 · Data fabric | Ingest HUMS, tech logs, spares, depot status, flying programme, environment; map to the common data model; entity resolution; data-quality scores; lineage | Pandas, Pydantic, SQLite/Parquet (Postgres + TimescaleDB in production) | `backend/tatpar/data`, `backend/tatpar/domain` |
+| 1 · Data fabric | Data contracts and validated CSV / REST import for HUMS downloads, the tech log, IMMOLS stock and BRD/HAL repair status; register checks against tails, serials and stock points; data-quality scores; lineage (file hash, user, ledger entry); simulated HUMS edge gateway | Pandas, Parquet, JSON-lines (Postgres + TimescaleDB in production) | `backend/tatpar/ingest`, `backend/tatpar/data`, `backend/tatpar/domain` |
 | 2 · Intelligence | Engine RUL with conformal intervals; LRU survival; NFF, rogue-unit and chronic-defect detection; snag NLP; federated learning | LightGBM, SHAP, lifelines, scikit-learn | `backend/tatpar/prognostics`, `backend/tatpar/nlp`, `backend/tatpar/federated` |
 | 3 · Fleet Twin | Day-stepped simulation of the sustainment system with common random numbers; Monte-Carlo readiness forecast | NumPy, multiprocessing | `backend/tatpar/twin` |
 | 4 · Decision engines | FMP (flying + checks), RBS (VARI-METRIC), lateral transfers, cannibalisation advisor, readiness-backward planner, loss waterfall | OR-Tools CP-SAT, SciPy | `backend/tatpar/optimize` |
@@ -42,7 +42,7 @@ EnvironmentIndex (base, dust, heat, humidity, altitude → severity)
 
 ## 3. Data flow for one decision
 
-1. HUMS snapshot arrives → engine RUL model returns a calibrated interval (e.g. 61 [44, 83] cycles) and module attribution (HPC).
+1. A HUMS download arrives (`POST /api/ingest/hums`, from a CSV upload or the edge gateway) → it is validated against its contract → the engine RUL model returns a calibrated interval (e.g. 61 [44, 83] cycles) and module attribution (HPC), which replaces that engine's stored belief.
 2. Survival models update P(fail in next 25 h) for every installed LRU on that tail, adjusted for the base's environmental severity and the tail's mission mix.
 3. The Fleet Twin samples failure times from these distributions and simulates 60 days × 200 replications under the current plan → readiness fan chart and P(meet requirement).
 4. The FMP optimiser re-plans flying hours and check starts (bundling the predicted engine module work into the next phase check); RBS/transfers move spares toward bases with predicted demand.

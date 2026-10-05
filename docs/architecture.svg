@@ -42,17 +42,17 @@
   <!-- Data fabric -->
   <rect x="250" y="122" width="220" height="422" rx="14" fill="#e0f2fe" stroke="#0284c7"/>
   <text x="266" y="150" class="t">Common Data Model</text>
-  <text x="266" y="170" class="s" font-size="11">S5000F · ATA iSpec 2200 · OSA-CBM</text>
+  <text x="266" y="170" class="s" font-size="11">S5000F · ATA iSpec · OSA-CBM</text>
   <rect x="266" y="186" width="188" height="46" rx="8" fill="#ffffff" stroke="#7dd3fc"/>
-  <text x="278" y="206" class="s" font-weight="700">Adapters</text><text x="278" y="223" class="s">CSV · HDF5 · API · MQTT</text>
+  <text x="278" y="206" class="s" font-weight="700">Adapters</text><text x="278" y="223" class="s">CSV · REST · HUMS gateway</text>
   <rect x="266" y="242" width="188" height="46" rx="8" fill="#ffffff" stroke="#7dd3fc"/>
-  <text x="278" y="262" class="s" font-weight="700">Entity resolution</text><text x="278" y="279" class="s">tail · part no. · serial</text>
+  <text x="278" y="262" class="s" font-weight="700">Register checks</text><text x="278" y="279" class="s">tail · LRU code · serial S/N</text>
   <rect x="266" y="298" width="188" height="64" rx="8" fill="#ffffff" stroke="#7dd3fc"/>
   <text x="278" y="318" class="s" font-weight="700">Unified graph</text><text x="278" y="335" class="s">Tail → System → LRU serial</text><text x="278" y="351" class="s">→ events → stock → pipeline</text>
   <rect x="266" y="372" width="188" height="46" rx="8" fill="#ffffff" stroke="#7dd3fc"/>
   <text x="278" y="392" class="s" font-weight="700">Data-quality scores</text><text x="278" y="409" class="s">fresh · complete · consistent</text>
   <rect x="266" y="428" width="188" height="46" rx="8" fill="#ffffff" stroke="#7dd3fc"/>
-  <text x="278" y="448" class="s" font-weight="700">Lineage</text><text x="278" y="465" class="s">every number traceable</text>
+  <text x="278" y="448" class="s" font-weight="700">Lineage</text><text x="278" y="465" class="s">every import hashed · ledger</text>
   <rect x="266" y="484" width="188" height="46" rx="8" fill="#ffffff" stroke="#7dd3fc"/>
   <text x="278" y="504" class="s" font-weight="700">Env. Severity Index</text><text x="278" y="521" class="s">per base</text>
 
@@ -68,7 +68,7 @@
   <rect x="516" y="362" width="208" height="58" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
   <text x="528" y="382" class="s" font-weight="700">Snag intelligence</text><text x="528" y="399" class="s">ATA auto-code · similar cases</text><text x="528" y="413" class="s">fix-effectiveness ranking</text>
   <rect x="516" y="428" width="208" height="102" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
-  <text x="528" y="448" class="s" font-weight="700">Federated learning</text><text x="528" y="465" class="s">bases train locally,</text><text x="528" y="481" class="s">share only model weights</text><text x="528" y="503" class="s" fill="#6d28d9">raw data never leaves base</text>
+  <text x="528" y="448" class="s" font-weight="700">Federated learning</text><text x="528" y="465" class="s">bases train locally,</text><text x="528" y="481" class="s">share weights + aggregate stats</text><text x="528" y="503" class="s" fill="#6d28d9">raw data never leaves base</text>
 
   <!-- Twin -->
   <rect x="770" y="122" width="290" height="140" rx="14" fill="#0f766e"/>
@@ -121,7 +121,7 @@
   <path class="ln" d="M1060 333 L1086 333"/>
   <!-- feedback loop -->
   <path class="ln" d="M1170 544 L1170 600 L360 600 L360 548"/>
-  <text x="560" y="592" class="s" font-weight="700" fill="#475569">human approval · outcomes feed back → models re-learn</text>
+  <text x="560" y="592" class="s" font-weight="700" fill="#475569">human approval · unit data imports update beliefs → models retrain offline</text>
 
   <!-- Trust bar -->
   <rect x="40" y="630" width="1210" height="96" rx="14" fill="#ffffff" stroke="#94a3b8"/>

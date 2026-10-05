@@ -101,6 +101,18 @@ def overview():
     }
 
 
+def uploaded_hums(ctx, ser: int):
+    """(history in model layout, interval record) if a unit uploaded HUMS data for this engine's current life."""
+    from ...ingest import store
+    from ...ingest.apply import _multi_regime, hums_frame
+
+    o = getattr(ctx.belief, "hums_overrides", {}).get(ser)
+    if not o or o["lives"] != int(ctx.state.ser_lives[ser]):
+        return None
+    hist = store.hums_history(ser)
+    return (_multi_regime(ctx.rul, hums_frame(hist, ser)), o) if hist is not None else None
+
+
 @router.get("/aircraft/{tail}")
 def aircraft(tail: str):
     ctx = get_ctx()
@@ -120,14 +132,18 @@ def aircraft(tail: str):
                      "p_fail_7d": round(float(ctx.risk7[p]), 4), "p_fail_30d": round(float(ctx.risk30[p]), 4),
                      "missing": ser < 0})
     engines = []
-    eng_tab = ctx.tables["engines"].set_index("pos") if len(ctx.tables["engines"]) else None
     for p in pos:
         if st.pos_type[p] != ENGINE_IDX or st.pos_serial[p] < 0:
             continue
         ser = int(st.pos_serial[p])
-        uid = st.engine_units[int(st.ser_unit[ser])]
-        cyc = int(min(st.engine_unit_life[int(st.ser_unit[ser])] - 1, max(2, st.ser_age[ser] // FH_PER_CYCLE)))
-        win = hums_window(uid, cyc)
+        up = uploaded_hums(ctx, ser)
+        if up is not None:      # the latest HUMS download a unit imported for this engine
+            win, o = up
+            cyc, source = int(o["last_cycle"]), f"DOWNLOAD {o['file']} · {o['ts'][:16].replace('T', ' ')}Z"
+        else:
+            uid = st.engine_units[int(st.ser_unit[ser])]
+            cyc = int(min(st.engine_unit_life[int(st.ser_unit[ser])] - 1, max(2, st.ser_age[ser] // FH_PER_CYCLE)))
+            win, source = hums_window(uid, cyc), f"NASA C-MAPSS {uid}"
         pred = ctx.rul.predict_features(ctx.rul.featurize(win))
         step = max(1, len(pred) // 60)
         trend = [{"cycle": int(c), "lo": float(a), "med": float(b), "hi": float(d)}
@@ -136,7 +152,7 @@ def aircraft(tail: str):
         last = pred.iloc[-1]
         sensors = {s: [float(v) for v in win[s].to_numpy()[-60:]] for s in ("T30", "T50", "Ps30", "phi")}
         engines.append({
-            "pos": int(p), "serial": ser, "hums_source": f"NASA C-MAPSS {uid}", "cycle": cyc,
+            "pos": int(p), "serial": ser, "hums_source": source, "uploaded": up is not None, "cycle": cyc,
             "rul_cycles": {"lo": float(last["rul_lo"]), "med": float(last["rul_med"]), "hi": float(last["rul_hi"])},
             "rul_fh": {"lo": float(last["rul_lo"] * FH_PER_CYCLE), "med": float(last["rul_med"] * FH_PER_CYCLE),
                        "hi": float(last["rul_hi"] * FH_PER_CYCLE)},

@@ -42,7 +42,15 @@ class Context:
         for name in ("rogue_units", "chronic_defects"):
             p = ARTIFACTS_DIR / f"{name}.parquet"
             ctx.tables[name] = pd.read_parquet(p) if p.exists() else pd.DataFrame()
+        from ..ingest.apply import replay
+
+        replay(ctx)             # data imported from units since the last build
         return ctx
+
+    def refresh(self) -> None:
+        """Drop cached risk after an import changed the state or the beliefs."""
+        for k in ("risk7", "risk30"):
+            self.__dict__.pop(k, None)
 
     @property
     def today(self) -> str:
@@ -69,3 +77,9 @@ def get_ctx() -> Context:
     if _CTX is None:
         _CTX = Context.load()
     return _CTX
+
+
+def reload() -> None:
+    """Forget the loaded context; the next request rebuilds it from disk."""
+    global _CTX
+    _CTX = None

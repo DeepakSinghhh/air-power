@@ -4,7 +4,7 @@ import { dataDtg, dtg, usePersona } from "../components/Layout";
 import { PhaseTrack } from "../components/PhaseTrack";
 import { Chart } from "../components/Chart";
 import { Board, ErrorBox, Loading, Panel, StateLegend } from "../components/ui";
-import { fmt, fmtPct, postJSON, useApi } from "../lib/api";
+import { fmt, fmtPct, postJSON, useApi, useIngestStamp } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { endLabel, fanSeries, grid, tooltip, xCat, yVal } from "../lib/charts";
 import { STATE_CODE, stateCss, useTheme } from "../lib/theme";
@@ -13,8 +13,9 @@ const sqnShort = (name: string) => name.split(" (")[0].toUpperCase();
 const sqnBase = (name: string) => (name.split("— ")[1] ?? "").toUpperCase();
 
 export default function Overview() {
-  const ov = useApi<any>("/api/overview");
-  const fleet = useApi<any[]>("/api/fleet");
+  const seq = useIngestStamp(8000);   // alerts follow imported data (e.g. a HUMS download)
+  const ov = useApi<any>("/api/overview", [seq]);
+  const fleet = useApi<any[]>("/api/fleet", [seq]);
   const plan = useApi<any>("/api/plan");
   if (ov.error || fleet.error) return <ErrorBox error={(ov.error || fleet.error)!} />;
   if (!ov.data || !fleet.data) return <Loading />;

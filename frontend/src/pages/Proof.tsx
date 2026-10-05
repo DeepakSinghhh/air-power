@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Stamp } from "../components/glyphs";
 import { Chart } from "../components/Chart";
 import { Board, ErrorBox, Loading, Meter, Panel } from "../components/ui";
-import { fmt, fmtPct, postForm, useApi } from "../lib/api";
+import { download, fmt, fmtPct, getJSON, postForm, postJSON, useApi, useIngestStamp } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { grid, MONO, tooltip, yVal } from "../lib/charts";
 import { SQN_COLOR, useTheme } from "../lib/theme";
@@ -19,9 +19,10 @@ const LAYERS: string[][] = [
 /** 08 PROOF: where every number comes from, how good the models are, and the decision ledger. */
 export default function ProofPage() {
   const { tokens: t } = useTheme();
-  const src = useApi<any>("/api/data/sources");
+  const seq = useIngestStamp(6000);
+  const src = useApi<any>("/api/data/sources", [seq]);
   const mdl = useApi<any>("/api/models");
-  const audit = useApi<any>("/api/audit");
+  const audit = useApi<any>("/api/audit", [seq]);
   if (src.error || mdl.error) return <ErrorBox error={(src.error || mdl.error)!} />;
   if (!src.data || !mdl.data) return <Loading />;
   const data = src.data, m = mdl.data;
@@ -60,19 +61,20 @@ export default function ProofPage() {
   const fl = m.federated;
   return (
     <Board no="08" title="Proof" sub="Where every number on every board comes from, how good the models are (on data they never saw), and the tamper-evident ledger of every decision taken in this room.">
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-4">
-        <Panel title="Provenance — sources" meta={`QUALITY = COMPLETENESS · CONSISTENCY · FRESHNESS · REF ${data.today}`} pad={false}>
-          <div className="scroll-y">
-            <table className="ledger">
-              <thead><tr><th>Source</th><th>Entity</th><th>S5000F</th><th>OSA-CBM</th><th className="n">Rows</th><th className="n">Fresh</th><th style={{ width: 140 }}>Quality</th></tr></thead>
-              <tbody>{data.sources.map((s: any) => (
-                <tr key={s.key}><td className="font-semibold">{s.label}</td><td className="ink-2">{s.entity}</td><td className="ink-2">{s.s5000f}</td><td className="m">{s.osa_cbm}</td>
-                  <td className="n">{fmt(s.rows)}</td><td className="n">{s.freshness_days != null ? `${s.freshness_days} D` : "—"}</td>
-                  <td><div className="flex items-center gap-2"><Meter value={s.score} color={s.score >= 0.9 ? "var(--good)" : "var(--warn)"} /><span className="mono text-[11.5px]">{fmtPct(s.score)}</span></div></td></tr>))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+      <Panel title="Provenance — sources" meta={`QUALITY = COMPLETENESS · CONSISTENCY · FRESHNESS · REF ${data.today}`} pad={false}>
+        <div className="scroll-y">
+          <table className="ledger">
+            <thead><tr><th>Source</th><th>Entity</th><th>S5000F</th><th>OSA-CBM</th><th className="n">Rows</th><th className="n">Fresh</th><th>Unit import</th><th style={{ width: 140 }}>Quality</th></tr></thead>
+            <tbody>{data.sources.map((s: any) => (
+              <tr key={s.key}><td className="font-semibold">{s.label}</td><td className="ink-2">{s.entity}</td><td className="ink-2">{s.s5000f}</td><td className="m">{s.osa_cbm}</td>
+                <td className="n">{fmt(s.rows)}</td><td className="n">{s.freshness_days != null ? `${s.freshness_days} D` : "—"}</td>
+                <td className="m text-[11px]">{s.last_import ? <b>{String(s.last_import.ts).slice(5, 16).replace("T", " ")}Z · {s.last_import.accepted} ROWS</b> : s.ingest ? <span className="ink-3">CSV · {String(s.ingest).toUpperCase()}</span> : <span className="ink-3">—</span>}</td>
+                <td><div className="flex items-center gap-2"><Meter value={s.score} color={s.score >= 0.9 ? "var(--good)" : "var(--warn)"} /><span className="mono text-[11.5px]">{fmtPct(s.score)}</span></div></td></tr>))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+      <DataFabric seq={seq}>
         <Panel title="Lineage" meta="EVERY NUMBER TRACES DOWN THIS CHAIN">
           <div className="flex flex-col items-center gap-1">
             {LAYERS.map((row, i) => (
@@ -84,9 +86,8 @@ export default function ProofPage() {
               </div>
             ))}
           </div>
-          <Validate />
         </Panel>
-      </div>
+      </DataFabric>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
         <Panel title="Engine RUL — 90 % interval coverage" meta="NASA C-MAPSS OFFICIAL TEST SETS">
@@ -100,12 +101,12 @@ export default function ProofPage() {
       </div>
 
       {fl && (
-        <Panel title="Federated learning across bases" meta={`FEDAVG · ${fl.rounds} ROUNDS · ONLY WEIGHTS LEAVE A BASE`} pad={false} className="mt-4">
+        <Panel title="Federated learning across bases" meta={`FEDAVG · ${fl.rounds} ROUNDS · ONLY WEIGHTS + AGGREGATE STATISTICS LEAVE A BASE`} pad={false} className="mt-4">
           <table className="ledger"><thead><tr><th>Training regime</th>{Object.keys(fl.clients).map((b) => <th key={b} className="n">{b} <span className="ink-3">{fl.clients[b]}</span></th>)}<th className="n">Mean RMSE</th><th>Raw data leaves base?</th></tr></thead>
             <tbody>{fl.results.map((r: any) => <tr key={r.regime}><td>{r.regime}</td>
               {Object.keys(fl.clients).map((b) => <td key={b} className="n">{fmt(r.per_base[b], 1)}</td>)}
               <td className="n font-bold">{fmt(r.rmse, 2)}</td><td className="m">{String(r.data_moved).toUpperCase()}</td></tr>)}</tbody></table>
-          <div className="foot px-3 pb-2">RMSE in cycles on each base's held-out NASA test engines. Leh (8 engines of history) gains most: {fmt(fl.results[0].per_base.Leh, 1)} → {fmt(fl.results[1].per_base.Leh, 1)} without sharing a single sensor record.</div>
+          <div className="foot px-3 pb-2">RMSE in cycles on each base's held-out NASA test engines. Leh (8 engines of history) gains most: {fmt(fl.results[0].per_base.Leh, 1)} → {fmt(fl.results[1].per_base.Leh, 1)} without sharing a single engine record. Each base is scored on its own test engines; the local-only baseline gets the same training steps.</div>
         </Panel>
       )}
 
@@ -169,47 +170,106 @@ function DataPlate({ c }: { c: any }) {
   );
 }
 
-function Validate() {
+const SOURCE_LABEL: Record<string, string> = { hums: "HUMS", snags: "TECH LOG", stock: "STOCK · IMMOLS", repairs: "REPAIRS · BRD/HAL", sorties: "SORTIES" };
+
+/** Data fabric: a unit imports its own exports. Contract → validate → import → what changed, all on the record. */
+function DataFabric({ seq, children }: { seq: number; children?: ReactNode }) {
   const { can } = useAuth();
-  const [kind, setKind] = useState("snags");
-  const [report, setReport] = useState<any>(null);
+  const contracts = useApi<any[]>("/api/ingest/contracts");
+  const lineage = useApi<any[]>("/api/ingest/lineage", [seq]);
+  const [src, setSrc] = useState("hums");
   const [file, setFile] = useState<File | null>(null);
-  const [imported, setImported] = useState<any>(null);
-  const upload = async (f: File) => {
-    const fd = new FormData();
-    fd.append("file", f);
-    setFile(f);
-    setImported(null);
-    setReport(await postForm(`/api/data/validate?kind=${kind}`, fd).catch((e) => ({ ok: false, rows: 0, errors: [String(e)] })));
+  const [check, setCheck] = useState<any>(null);
+  const [done, setDone] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [showFields, setShowFields] = useState(false);
+  if (contracts.error) return <ErrorBox error={contracts.error} />;
+  if (!contracts.data) return null;
+  const c = contracts.data.find((x) => x.source === src)!;
+  const pick = (s: string) => { setSrc(s); setFile(null); setCheck(null); setDone(null); setErr(null); setShowFields(false); };
+  const form = (f: File) => { const fd = new FormData(); fd.append("file", f); return fd; };
+  const validate = async (f: File) => {
+    setFile(f); setDone(null); setErr(null); setBusy(true);
+    try { setCheck((await postForm(`/api/ingest/${src}/validate`, form(f))).report); } catch (e) { setErr(String(e)); } finally { setBusy(false); }
   };
   const doImport = async () => {
     if (!file) return;
-    const fd = new FormData();
-    fd.append("file", file);
-    setImported(await postForm("/api/snags/import", fd).catch((e) => ({ filed: 0, errors: [String(e)] })));
+    setBusy(true); setErr(null);
+    try { setDone(await postForm(`/api/ingest/${src}`, form(file))); lineage.setData(await getJSON("/api/ingest/lineage")); } catch (e) { setErr(String(e)); } finally { setBusy(false); }
   };
+  const reset = async () => {
+    if (!window.confirm("Remove every imported file and return to the generated fleet state?")) return;
+    setBusy(true);
+    try { await postJSON("/api/ingest/reset", {}); setDone(null); setCheck(null); lineage.setData(await getJSON("/api/ingest/lineage")); } catch (e) { setErr(String(e)); } finally { setBusy(false); }
+  };
+  const perm = `data:import:${src}`;
+  const res = done?.result;
   return (
-    <div className="mt-4 pt-3 border-t" style={{ borderColor: "var(--rule)" }}>
-      <div className="cond text-[13px] font-semibold mb-1">Validate an export · import snags into the tech log</div>
-      <div className="flex flex-wrap items-center gap-2">
-        <select className="input" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Export kind">
-          <option value="snags">SNAGS (date, tail, text)</option><option value="stock">STOCK (stock_point, lru, qty)</option><option value="sorties">SORTIES (date, tail, hours)</option>
-        </select>
-        <label className="btn">CHOOSE CSV<input type="file" accept=".csv" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
-      </div>
-      {report && (
-        <div className="mt-2 mono text-[12px] space-y-1">
-          <div><b style={{ color: report.ok ? "var(--good)" : "var(--crit)" }}>{report.ok ? "ACCEPTED" : "REJECTED"}</b> · {fmt(report.rows)} ROWS · COMPLETENESS {fmtPct(report.completeness, 1)}</div>
-          {report.errors?.map((e: string) => <div key={e} style={{ color: "var(--crit)" }}>✕ {e}</div>)}
-          {report.warnings?.map((w: string) => <div key={w} style={{ color: "var(--warn)" }}>! {w}</div>)}
-          {report.ata_preview?.slice(0, 5).map((p: any, i: number) => <div key={i} className="ink-2">{p.text} → ATA {p.ata.ata} ({fmtPct(p.ata.p)})</div>)}
-          {report.ok && kind === "snags" && !imported && (can("data:import")
-            ? <button className="btn ink mt-1" onClick={doImport}>IMPORT {report.rows} ENTRIES INTO THE TECH LOG</button>
-            : <div className="ink-3">IMPORT NEEDS STN CDR / SENGO / LOG OFFR.</div>)}
-          {imported && <div style={{ color: imported.filed ? "var(--good)" : "var(--crit)" }}>
-            {imported.filed ? `FILED ${imported.filed} ENTRIES (${imported.first} … ${imported.last}) — SEE 07 TECH LOG` : `NOTHING FILED ${imported.errors?.join("; ") ?? ""}`}</div>}
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-4 mt-4">
+      <Panel title="Data fabric — import unit data" meta="CONTRACT → VALIDATE → IMPORT → LEDGER">
+        <div className="flex flex-wrap gap-1.5 mb-3" role="tablist" aria-label="Data source">
+          {contracts.data.map((x) => (
+            <button key={x.source} role="tab" aria-selected={x.source === src} className={`btn ${x.source === src ? "on" : ""}`} onClick={() => pick(x.source)}>{SOURCE_LABEL[x.source] ?? x.source}</button>
+          ))}
         </div>
-      )}
+        <div className="text-[13px] leading-snug mb-2"><b>{c.title}.</b> <span className="ink-2">{c.system}.</span></div>
+        <div className="text-[13px] leading-snug mb-2"><span className="cond ink-3 text-[12px]">AN IMPORT </span>{c.applies}</div>
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <button className="btn" onClick={() => download(`/api/ingest/template/${src}`, `tatpar_${src}_template.csv`).catch((e) => setErr(String(e)))}>TEMPLATE CSV</button>
+          <button className="btn" onClick={() => download(`/api/ingest/template/${src}?sample=true`, `tatpar_${src}_sample.csv`).catch((e) => setErr(String(e)))}>SAMPLE CSV</button>
+          <label className="btn ink">CHOOSE CSV<input type="file" accept=".csv,text/csv" className="hidden" aria-label="Choose CSV" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) validate(f); }} /></label>
+          <button className="btn" onClick={() => setShowFields(!showFields)}>{showFields ? "HIDE" : "SHOW"} CONTRACT · {c.fields.length} FIELDS</button>
+        </div>
+        {showFields && (
+          <div className="scroll-y max-h-[240px] mb-2"><table className="ledger"><thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Req.</th><th>Allowed</th><th>Meaning</th></tr></thead>
+            <tbody>{c.fields.map((f: any) => <tr key={f.name}><td className="m">{f.name}</td><td className="m">{f.type}</td><td className="m">{f.unit}</td><td className="m">{f.required ? "YES" : ""}</td>
+              <td className="m text-[11px]">{f.values.length ? f.values.join(" · ") : f.lo != null ? `${f.lo} – ${f.hi}` : ""}</td><td className="text-[12px] ink-2">{f.doc}</td></tr>)}</tbody></table></div>
+        )}
+        {busy && <Loading label={done ? "IMPORTING" : "VALIDATING"} />}
+        {err && <div className="mono text-[12px]" style={{ color: "var(--crit)" }}>{err}</div>}
+        {check && !busy && (
+          <div className="mono text-[12px] space-y-1 mt-2" aria-live="polite">
+            <div className="flex flex-wrap items-center gap-3">
+              <Stamp tone={check.ok ? "green" : "red"} rotate={-2}>{check.ok ? (check.rejected ? "PARTLY ACCEPTED" : "ACCEPTED") : "REJECTED"}</Stamp>
+              <span>{file?.name} · {fmt(check.rows)} ROWS · {fmt(check.accepted)} OK · {fmt(check.rejected)} REJECTED{check.completeness != null ? ` · COMPLETENESS ${fmtPct(check.completeness, 1)}` : ""}</span>
+            </div>
+            {check.errors?.map((e: string) => <div key={e} style={{ color: "var(--crit)" }}>✕ {e}</div>)}
+            {check.row_errors?.slice(0, 8).map((r: any) => <div key={r.line} style={{ color: "var(--crit)" }}>✕ LINE {r.line}: {r.reasons.join("; ")}</div>)}
+            {check.warnings?.map((w: string) => <div key={w} style={{ color: "var(--warn)" }}>! {w}</div>)}
+            {check.engines && <div className="ink-2">ENGINES: {check.engines.map((e: any) => `${e.tail} E${e.engine} (${e.cycles} CYCLES)`).join(" · ")}</div>}
+            {check.ok && !done && (c.validate_only ? <div className="ink-3">{c.applies}</div>
+              : can(perm) ? <button className="btn ink mt-1" onClick={doImport}>IMPORT {fmt(check.accepted)} ROWS AS {String(SOURCE_LABEL[src])}</button>
+              : <div className="ink-3">IMPORTING {String(SOURCE_LABEL[src])} NEEDS A DIFFERENT AUTHORITY (THE SERVER CHECKS THE ROLE).</div>)}
+          </div>
+        )}
+        {done && !busy && (
+          <div className="mono text-[12px] space-y-1 mt-2" aria-live="polite">
+            <div className="flex flex-wrap items-center gap-3">
+              <Stamp tone={done.applied ? "green" : "red"} rotate={-3}>{done.applied ? `IMPORTED · #${done.lineage.seq}` : "NOT IMPORTED"}</Stamp>
+              <span>{res?.summary}</span>
+            </div>
+            {res?.engines?.map((e: any) => (
+              <div key={e.serial}>{e.tail} ENGINE {e.engine} (S/N {e.serial}, {e.cycles} CYCLES): RUL {fmt(e.before_fh.med)} → <b>{fmt(e.after_fh.med)} FH</b> (90 % {fmt(e.after_fh.lo)}–{fmt(e.after_fh.hi)}){e.alert && <b style={{ color: "var(--crit)" }}> · ALERT</b>} · <a href={`/aircraft/${e.tail}`}>OPEN {e.tail} →</a></div>
+            ))}
+            {res?.repeats?.map((r: string) => <div key={r} style={{ color: "var(--warn)" }}>! {r}</div>)}
+            {res?.rows?.slice(0, 6).map((r: any, i: number) => <div key={i} className="ink-2">{r.stock_point ? `${String(r.stock_point).toUpperCase()} ${r.lru}: ${r.before} → ${r.after}` : `S/N ${r.serial} ${r.lru} ${r.status}: RETURN ${r.before} → ${r.after}${r.condemned ? " · CONDEMNED" : ""}`}</div>)}
+            {done.applied && <div className="ink-3">RECORDED IN THE DECISION LEDGER WITH THE FILE'S SHA-256. RISK, ALERTS, FORECASTS AND THE PLANNER NOW USE THIS DATA.</div>}
+          </div>
+        )}
+      </Panel>
+      <div className="space-y-4 min-w-0">
+      <Panel title="Import register" meta="EVERY FILE · WHO · HASH" pad={false}>
+        {!lineage.data?.length ? <div className="pad mono text-[12px] ink-3">NO UNIT DATA IMPORTED. THE BOARDS SHOW THE GENERATED NOTIONAL FLEET.</div> : (
+          <div className="scroll-y max-h-[340px] overflow-x-auto"><table className="ledger"><thead><tr><th className="n">#</th><th>Time (UTC)</th><th>Source</th><th>File</th><th className="n">OK / rej.</th><th>By</th><th>SHA-256</th></tr></thead>
+            <tbody>{lineage.data.map((e: any) => <tr key={e.seq}><td className="n">{e.seq}</td><td className="m">{String(e.ts).slice(5, 16).replace("T", " ")}</td><td className="m">{String(SOURCE_LABEL[e.source] ?? e.source).split(" · ")[0]}</td>
+              <td className="m text-[11px] truncate max-w-[110px]" title={e.file}>{e.file}</td><td className="n">{e.accepted} / {e.rejected}</td><td className="m">{e.role}</td><td className="m text-[11px]">{String(e.sha256).slice(0, 10)}…</td></tr>)}</tbody></table></div>
+        )}
+        {can("data:reset") && !!lineage.data?.length && <div className="pad pt-2"><button className="btn" onClick={reset} disabled={busy}>REMOVE ALL IMPORTS</button></div>}
+        <div className="foot px-3 pb-2">Edge gateway for live HUMS: <span className="mono">python -m tatpar.ingest.gateway</span> replays post-flight downloads into this server.</div>
+      </Panel>
+      {children}
+      </div>
     </div>
   );
 }

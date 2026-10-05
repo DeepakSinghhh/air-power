@@ -38,10 +38,16 @@ def sustainment():
     for r in rogue_rows:
         r["name"] = LRU_TYPES[r["lru"]].name
     adv = ctx.bench("advisors") or {}
+    # units moved along each leg of the chain over the last 12 months (from the repair and supply records)
+    rep, sup = ctx.tables["repairs"], ctx.tables["supply"]
+    cut = st.day - 365
+    bases = set(SP_IDS) - {"ED"}
     supply_flow = [
-        {"source": "Squadron bases", "target": "Repair agencies", "value": len(last)},
-        {"source": "Repair agencies", "target": "Equipment depot", "value": int(len(last) * 0.96)},
-        {"source": "Equipment depot", "target": "Squadron bases", "value": int(len(last) * 0.96)},
+        {"source": "Squadron bases", "target": "Repair agencies", "value": int((rep["sent_day"] >= cut).sum())},
+        {"source": "Repair agencies", "target": "Equipment depot",
+         "value": int(((rep["return_day"] >= cut) & (rep["return_day"] <= st.day) & ~rep["condemned"]).sum())},
+        {"source": "Equipment depot", "target": "Squadron bases",
+         "value": int(((sup["day"] >= cut) & (sup["from"] == "ED") & sup["to"].isin(bases)).sum())},
     ]
     return {
         "stock": stock, "pipeline": pipeline, "in_transit": dict(transit), "backorders": dict(backorders),

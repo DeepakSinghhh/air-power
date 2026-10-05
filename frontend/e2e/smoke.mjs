@@ -1,10 +1,13 @@
 // End-to-end smoke test of the ops room against a running server (default http://127.0.0.1:8000).
 //   npm run e2e              (server must be running: `make serve`)
-// Checks sign-in, role gating, filing a snag, approving a plan and actioning its order, every board
-// in day and night with zero console errors, and no sideways scrolling at phone width.
+// Checks sign-in, role gating, filing a snag, approving a plan and actioning its order, importing a
+// HUMS download through the data fabric, every board in day and night with zero console errors, and no
+// sideways scrolling at phone width. Imports made by the test are removed at the end.
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const BASE = process.env.TATPAR_URL || "http://127.0.0.1:8000";
+const SAMPLE = (name) => fileURLToPath(new URL(`../../data/samples/${name}`, import.meta.url));
 const BOARDS = ["/", "/planner", "/flow", "/aircraft/HF-114", "/sustainment", "/loss", "/snags", "/proof"];
 const fails = [];
 const ok = (cond, msg) => { console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`); if (!cond) fails.push(msg); };
@@ -73,7 +76,31 @@ async function signIn(page, role, pin) {
   await s2.ctx.close();
 }
 
-// 4 · every board, day and night, no console errors
+// 4 · data fabric: SENGO imports a HUMS download; the engine's record shows it; AUDITOR cannot import
+{
+  const { ctx, page, errors } = await session();
+  await signIn(page, "SENGO", "2602");
+  await page.goto(BASE + "/proof", { waitUntil: "networkidle" });
+  await page.locator("[role=tab]:has-text('HUMS')").click();
+  await page.locator("input[aria-label='Choose CSV']").setInputFiles(SAMPLE("hums_sample.csv"));
+  ok(await seen(page.locator(".stamp:has-text('ACCEPTED')"), 20000), "HUMS download passes its data contract");
+  await page.locator("button:has-text('IMPORT')").first().click();
+  ok(await seen(page.locator(".stamp:has-text('IMPORTED')"), 30000), "SENGO imports the HUMS download (ledger entry)");
+  const tail = (await page.locator("a:has-text('OPEN ')").first().textContent()).match(/[HL]F-\d{3}/)[0];
+  await page.goto(BASE + `/aircraft/${tail}`, { waitUntil: "networkidle" });
+  ok(await seen(page.locator(".stamp:has-text('UPDATED FROM HUMS DOWNLOAD')"), 20000), `${tail}'s engine record uses the download`);
+  ok(errors.length === 0, `no console errors while importing (${errors.join(" | ")})`);
+  await ctx.close();
+  const s2 = await session();
+  await signIn(s2.page, "AUDITOR", "2605");
+  await s2.page.goto(BASE + "/proof", { waitUntil: "networkidle" });
+  await s2.page.locator("[role=tab]:has-text('STOCK')").click();
+  await s2.page.locator("input[aria-label='Choose CSV']").setInputFiles(SAMPLE("stock_sample.csv"));
+  ok(await seen(s2.page.locator("text=NEEDS A DIFFERENT AUTHORITY"), 20000), "AUDITOR can validate but is not offered the import");
+  await s2.ctx.close();
+}
+
+// 5 · every board, day and night, no console errors
 for (const theme of ["light", "dark"]) {
   const { ctx, page, errors } = await session();
   await signIn(page, "AUDITOR", "2605");
@@ -86,7 +113,7 @@ for (const theme of ["light", "dark"]) {
   await ctx.close();
 }
 
-// 5 · phone width: no sideways scrolling
+// 6 · phone width: no sideways scrolling
 {
   const { ctx, page } = await session({ width: 390, height: 844 });
   await signIn(page, "STN CDR", "2601");
@@ -97,6 +124,14 @@ for (const theme of ["light", "dark"]) {
     ok(over <= 1, `no horizontal page scroll at 390 px on ${b} (overflow ${over}px)`);
   }
   await ctx.close();
+}
+
+// leave the server as we found it: remove the test's imports
+{
+  const tok = await (await fetch(BASE + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: "stncdr", pin: "2601" }) })).json();
+  const r = await fetch(BASE + "/api/ingest/reset", { method: "POST", headers: { Authorization: `Bearer ${tok.token}` } });
+  ok(r.ok, "test imports removed");
 }
 
 await browser.close();

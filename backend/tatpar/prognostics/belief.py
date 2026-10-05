@@ -31,6 +31,7 @@ class Belief:
     surv: SurvivalModels
     engine_table: dict = field(default_factory=dict)   # uid -> array[cycle] of (lo, med, hi) in cycles
     rogue_serials: set = field(default_factory=set)
+    hums_overrides: dict = field(default_factory=dict)  # serial -> interval from an uploaded HUMS download
 
     @classmethod
     def build(cls, surv: SurvivalModels, rul: EngineRUL, rogue_serials: set) -> "Belief":
@@ -51,6 +52,11 @@ class Belief:
 
     # ------------------------------------------------------------------ engines
     def engine_quantiles(self, st: FleetState, ser: int) -> tuple[float, float, float]:
+        o = getattr(self, "hums_overrides", None)
+        if o and ser in o and o[ser]["lives"] == int(st.ser_lives[ser]):
+            # latest uploaded download, aged by the cycles flown since (a repaired engine starts a new life)
+            flown = max(0.0, (float(st.ser_age[ser]) - o[ser]["age_at"]) / FH_PER_CYCLE)
+            return (max(0.0, o[ser]["lo"] - flown), max(0.0, o[ser]["med"] - flown), max(0.0, o[ser]["hi"] - flown))
         uid = st.engine_units[int(st.ser_unit[ser])]
         arr = self.engine_table[uid]
         cyc = int(min(len(arr) - 1, max(1, st.ser_age[ser] // FH_PER_CYCLE)))

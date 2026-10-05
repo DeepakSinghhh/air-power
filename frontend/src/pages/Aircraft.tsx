@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Planform, StateStamp, Stamp, type Balloon } from "../components/glyphs";
 import { Chart } from "../components/Chart";
 import { Board, Code, ErrorBox, Kv, Loading, Meter, Panel } from "../components/ui";
-import { fmt, fmtPct, useApi } from "../lib/api";
+import { fmt, fmtPct, useApi, useIngestStamp } from "../lib/api";
 import { grid, tooltip, yVal } from "../lib/charts";
 import { useTheme } from "../lib/theme";
 
@@ -59,7 +59,8 @@ const ZONE_XY: Record<number, [number, number]> = {
 };
 
 function Detail({ tail }: { tail: string }) {
-  const { data, error, loading } = useApi<any>(`/api/aircraft/${tail}`);
+  const seq = useIngestStamp();      // a HUMS download (or any import) refreshes the record
+  const { data, error, loading } = useApi<any>(`/api/aircraft/${tail}`, [seq]);
   if (error) return <ErrorBox error={error} />;
   if (!data || data.tail !== tail) return <Panel title={tail}><Loading label="COMPUTING HUMS PREDICTIONS" /></Panel>;
   return (
@@ -173,6 +174,7 @@ function EnginePanel({ e, idx, n }: { e: any; idx: number; n: number }) {
         <span className="mono font-bold text-[22px]" style={{ color: hot ? "var(--crit)" : undefined }}>{fmt(e.rul_fh.med)} FH</span>
         <span className="mono text-[12px] ink-2">90 % CONFORMAL {fmt(e.rul_fh.lo)}–{fmt(e.rul_fh.hi)} FH</span>
         {hot && <Stamp tone="red" rotate={-3}>CHANGE AT PHASE</Stamp>}
+        {e.uploaded && <Stamp tone="blue" rotate={2}>UPDATED FROM HUMS DOWNLOAD</Stamp>}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">
         <Chart option={opt} height={170} />
