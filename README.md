@@ -28,6 +28,8 @@ The interface is built for the people who run a station, not as a generic dashbo
 | ![sign-in](docs/screenshots/moment-sign-in.png) | ![signal](docs/screenshots/moment-signal-released.png) | ![order](docs/screenshots/moment-order-approved.png) |
 | **Order tracker** | **Does the gain hold?** | **Duty officer** |
 | ![orders](docs/screenshots/moment-order-tracker.png) | ![robustness](docs/screenshots/moment-robustness.png) | ![duty officer](docs/screenshots/moment-duty-officer.png) |
+| **Data fabric: a HUMS download imported** | **The engine record uses it** | |
+| ![data fabric](docs/screenshots/moment-data-fabric.png) | ![HUMS download](docs/screenshots/moment-hums-download.png) | |
 
 All boards, day and night: [docs/screenshots](docs/screenshots).
 
