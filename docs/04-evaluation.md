@@ -86,10 +86,10 @@ Requirement: ≥9 mission-capable aircraft at Sqn A (HF) — Jodhpur from D+14 t
 | Action | P(meet requirement) | Gain |
 |---|---|---|
 | Current practice | 12% | +0 pts |
-| Requirement-aware flying & maintenance plan | 13% | +2 pts |
-| Pre-position spares at Jodhpur | 29% | +16 pts |
-| Expedite critical repairs at BRD / HAL | 32% | +2 pts |
-| Consolidated cannibalisation + NFF screening | 46% | +14 pts |
+| Requirement-aware flying & maintenance plan | 18% | +7 pts |
+| Pre-position spares at Jodhpur | 36% | +18 pts |
+| Expedite critical repairs at BRD / HAL | 35% | -1 pts |
+| Consolidated cannibalisation + NFF screening | 52% | +17 pts |
 
 ## 7. Federated learning across bases (engine RUL, NASA C-MAPSS)
 

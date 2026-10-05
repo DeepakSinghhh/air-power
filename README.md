@@ -39,7 +39,7 @@ All boards, day and night: [docs/screenshots](docs/screenshots).
 | Does it survive different assumptions? | gain stays **+16 to +26 pts** with failure rates ±30 %, repair times ±30 %, stock ±40 %, flying task ±20 %, two bays, biased or missing prognostics; 95 % CI excludes zero in all 15 cases | Notional, [sensitivity table](docs/04-evaluation.md#5b-does-the-gain-survive-different-assumptions-one-year-24-hidden-truth-futures-each) |
 | Readiness-based sparing (same ₹172 crore inventory) | modelled supply availability 83 % → 96 %; +10 pts mission-capable in the twin | Notional |
 | Phase-flow flight & maintenance plan (CP-SAT) | removes hangar queues (awaiting-bay 9.8 % → 0.2 %); +10 pts | Notional |
-| Readiness-backward planner (≥ 9 MC at Jodhpur, D+14–17, surge ×1.2) | P(meet) 12 % → 46 % | Notional |
+| Readiness-backward planner (≥ 9 MC at Jodhpur, D+14–17, surge ×1.2) | P(meet) 12 % → 52 % | Notional |
 | Engine RUL (LightGBM quantile + conformal) | RMSE 12.8 / 13.9 / 13.1 / 14.0 cycles on FD001–FD004; 90 % interval coverage 82.7 % → **90.4 %** after conformal calibration | NASA C-MAPSS official test sets |
 | Readiness forecast calibration | P10–P90 band contains 84 % of true outcomes (nominal 80 %) | Notional |
 | Federated learning across 5 bases | data-poor Leh detachment: RMSE 37.1 → 14.6 cycles without sharing raw data | NASA C-MAPSS |
