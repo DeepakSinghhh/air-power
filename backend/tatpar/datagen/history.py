@@ -108,6 +108,7 @@ def generate(seed: int = SEED, days: int = HISTORY_DAYS, verbose: bool = True) -
         row = {"pos": p, "tail": st.tail_ids[st.pos_tail[p]], "lru": LRU_IDS[st.pos_type[p]], "serial": s}
         if s >= 0:
             row.update({"hours": float(st.ser_hrs[s]), "repairs": int(st.ser_repairs[s]),
+                        "entry": float(st.ser_entry[s]),
                         "life_start": int(st.ser_life_start[s]),
                         **{f"cov_{k}": float(st.ser_cov[s, i]) for i, k in enumerate(("dust", "heat", "hum", "alt", "salt", "g"))}})
         pos_rows.append(row)

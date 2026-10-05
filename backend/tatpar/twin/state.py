@@ -37,7 +37,7 @@ COV_KEYS = ("dust", "heat", "hum", "alt", "salt", "g")
 def draw_life(lru_idx: int, rng: np.random.Generator, rogue: bool) -> float:
     l = LRU_TYPES[LRU_IDS[lru_idx]]
     life = l.eta_fh * rng.weibull(l.beta)
-    return life * (0.2 if rogue else 1.0)
+    return life * (0.07 if rogue else 1.0)
 
 
 @dataclass
@@ -73,6 +73,7 @@ class FleetState:
     ser_life_start: np.ndarray   # day the current life started (-1 = before history)
     ser_unit: np.ndarray         # C-MAPSS fleet-unit index for engines (-1 otherwise)
     ser_lives: np.ndarray        # number of lives drawn (for per-serial seeding)
+    ser_entry: np.ndarray        # hours since repair already flown when records began (left truncation)
     # ---- logistics
     stock: dict[tuple[int, int], list[int]]
     shipments: list[tuple[int, int, int, int]]      # (arrive_day, sp, serial, reserved_pos or -1)
@@ -99,7 +100,7 @@ class FleetState:
             return
         new = max(len(self.ser_type) * 2, self.n_ser + extra)
         for name in ("ser_type", "ser_L", "ser_age", "ser_hrs", "ser_rogue", "ser_repairs",
-                     "ser_life_start", "ser_unit", "ser_lives"):
+                     "ser_life_start", "ser_unit", "ser_lives", "ser_entry"):
             a = getattr(self, name)
             b = np.zeros(new, dtype=a.dtype)
             if name in ("ser_unit", "ser_life_start"):
@@ -136,6 +137,7 @@ class FleetState:
         self.ser_age[s] = 0.0
         self.ser_hrs[s] = 0.0
         self.ser_cov[s] = 0.0
+        self.ser_entry[s] = 0.0
         self.ser_life_start[s] = self.day
         self.ser_lives[s] = k + 1
 
@@ -205,19 +207,41 @@ def build_initial_state(seed: int = SEED, day: int = 0) -> FleetState:
         n_ser=0, ser_type=np.zeros(cap, int), ser_L=np.zeros(cap), ser_age=np.zeros(cap),
         ser_hrs=np.zeros(cap), ser_cov=np.zeros((cap, len(COV_KEYS))), ser_rogue=np.zeros(cap, bool),
         ser_repairs=np.zeros(cap, int), ser_life_start=np.full(cap, -1), ser_unit=np.full(cap, -1),
-        ser_lives=np.zeros(cap, int),
+        ser_lives=np.zeros(cap, int), ser_entry=np.zeros(cap),
         stock={}, shipments=[], pipeline=[], procurement=[], backorders=[], ed_queue=[],
         crew_free={i: [0] * SQUADRONS[s].crews for i, s in enumerate(SQN_IDS)},
         engine_units=engine_units, engine_unit_life=engine_unit_life, seed=seed,
     )
 
     # install serials with a random amount of life already consumed
+    from ..domain.environment import base_features, severity_multiplier
+
     for p in range(n_pos):
         s = st.new_serial(int(pos_type[p]), rng)
-        st.ser_age[s] = rng.random() * 0.9 * st.ser_L[s]
+        # Renewal-process equilibrium (inspection paradox): the life in progress at a random
+        # instant is length-biased and its elapsed fraction is uniform. Conditional on the
+        # elapsed age, the remaining life is then exactly the truncated life distribution.
+        li = int(pos_type[p])
+        if li == ENGINE_IDX:
+            w = st.engine_unit_life / st.engine_unit_life.sum()
+            u = int(rng.choice(len(w), p=w))
+            st.ser_unit[s] = u
+            st.ser_L[s] = st.engine_unit_life[u] * FH_PER_CYCLE
+        else:
+            cand = np.array([draw_life(li, rng, bool(st.ser_rogue[s])) for _ in range(40)])
+            st.ser_L[s] = cand[rng.choice(40, p=cand / cand.sum())]
+        st.ser_age[s] = rng.random() * st.ser_L[s]
         st.ser_life_start[s] = -1
         st.ser_repairs[s] = int(rng.integers(0, 3))
         st.pos_serial[p] = s
+        # time since last repair already on the record card (TSO), flown at the home base
+        base = SP_IDS[tail_sp[pos_tail[p]]]
+        l = LRU_TYPES[LRU_IDS[pos_type[p]]]
+        hrs = st.ser_age[s] / severity_multiplier(l, base, 1.15)
+        f = base_features(base)
+        st.ser_hrs[s] = hrs
+        st.ser_entry[s] = hrs
+        st.ser_cov[s] = [hrs * f["dust"], hrs * f["heat"], hrs * f["hum"], hrs * f["alt"], hrs * f["salt"], hrs * 1.15]
 
     # baseline (current-practice) stock: total spares per type cover ~90 % of the mean
     # repair-pipeline quantity, split 40 % central depot / 60 % bases by demand

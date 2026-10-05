@@ -615,6 +615,7 @@ class Simulator:
                 "day": d, "tail": s.tail_ids[tail] if tail is not None else "", "lru": LRU_IDS[li],
                 "serial": int(ser), "finding": finding, "hours": float(s.ser_hrs[ser]),
                 "life_start": int(s.ser_life_start[ser]), "repairs": int(s.ser_repairs[ser]),
+                "entry": float(s.ser_entry[ser]),
                 **{f"cov_{k}": float(s.ser_cov[ser, i]) for i, k in enumerate(COV_KEYS)},
                 "rogue_truth": bool(s.ser_rogue[ser]), "engine_unit": int(s.ser_unit[ser]),
                 "age_eff": float(s.ser_age[ser]),
