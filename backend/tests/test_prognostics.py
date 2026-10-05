@@ -36,12 +36,12 @@ def test_nff_and_rogue_detectors(metrics):
     assert metrics["rogue"]["precision"] >= 0.7
 
 
-def test_survival_closed_form_matches_lifelines_shape():
+def test_survival_closed_form_is_consistent():
     from tatpar.prognostics.survival import SurvivalModels
 
     m = SurvivalModels.load()
     lru = next(iter(m.params))
-    X = np.zeros((3, 4))
+    X = np.tile(m.params[lru]["mu"], (3, 1))        # fleet-average conditions
     p0 = m.cond_fail_prob(lru, np.array([0.0, 0.0, 0.0]), np.array([10.0, 100.0, 1000.0]), X)
     assert np.all(np.diff(p0) > 0) and np.all((p0 >= 0) & (p0 <= 1))
     u = np.full(3, 0.5)
