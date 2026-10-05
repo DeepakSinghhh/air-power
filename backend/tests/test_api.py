@@ -66,8 +66,25 @@ def test_snag_analysis_hinglish(client):
 
 def test_copilot_routes(client):
     for q, tool in [("How many aircraft will Sqn A have in 2 weeks?", "forecast"), ("status of HF-114", "aircraft"),
-                    ("which spares should we move", "transfers"), ("why is readiness low", "waterfall")]:
-        assert client.post("/api/copilot", json={"question": q}).json()["tool"] == tool
+                    ("which spares should we move", "transfers"), ("why is readiness low", "waterfall"),
+                    ("Which tails will fail this week?", "risk"), ("aircraft awaiting spares", "aog"),
+                    ("Which squadron has the lowest readiness?", "compare"),
+                    ("Compare Sqn B and Sqn C readiness next month", "compare"),
+                    ("what must I do to have 10 ready at Pune", "planner"),
+                    ("HYD PRESSURE LH SYSTEM MEIN FLUCTUATION TAXI KE DAURAN", "snag"),
+                    ("What is the weather in Delhi today?", "help"), ("Who won the cricket match?", "help"),
+                    ("Is HF-120 ready?", "unknown_tail"), ("how many aircraft will sqn E have", "unknown_squadron"),
+                    ("How many aircraft at Leh next week?", "unknown_base")]:
+        assert client.post("/api/copilot", json={"question": q}).json()["tool"] == tool, q
+
+
+def test_copilot_reads_the_horizon(client):
+    ask = lambda q: client.post("/api/copilot", json={"question": q}).json()["answer"]
+    assert "D+30" in ask("How many aircraft will Sqn A have on day 30?")
+    assert "D+7 " in ask("How many aircraft next week?")
+    assert "runs to D+59" in ask("forecast for D+90")
+    rows = client.post("/api/copilot", json={"question": "Compare Sqn B and Sqn C readiness next month"}).json()["table"]
+    assert [r["Sqn"][:5] for r in rows] == ["Sqn B", "Sqn C"]
 
 
 def test_audit_chain(client, tmp_path, monkeypatch):

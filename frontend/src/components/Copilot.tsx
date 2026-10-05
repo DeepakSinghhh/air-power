@@ -7,6 +7,7 @@ type Msg = { role: "q" | "a"; text: string; at: string; links?: { label: string;
 
 const SUGGEST = [
   "How many aircraft will Sqn A have in 2 weeks?",
+  "Which squadron has the lowest readiness?",
   "Which tails are most likely to snag this week?",
   "Status of HF-114",
   "Which spares should we move?",
