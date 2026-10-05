@@ -3,7 +3,7 @@
 Runs the Monte-Carlo experiments behind every headline number and stores them as JSON under
 ``artifacts/bench`` (served by the API), then writes ``docs/04-evaluation.md``.
 
-    python -m tatpar.pipelines.bench            # ~3-4 min on a 4-core laptop
+    python -m tatpar.pipelines.bench            # ~12 min on a 4-core laptop (incl. sensitivity)
     python -m tatpar.pipelines.bench --quick    # fewer replications (does not rewrite the docs)
 """
 from __future__ import annotations

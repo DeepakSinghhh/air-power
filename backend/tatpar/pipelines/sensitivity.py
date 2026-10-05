@@ -6,7 +6,7 @@ prognostic models' accuracy) and re-measures current practice vs the full TATPAR
 year of hidden-truth futures with common random numbers. The analytics are *not* refitted to the
 changed world, so the models are also mis-specified in every row — a conservative test.
 
-    python -m tatpar.pipelines.sensitivity            # ~3 min on a 4-core laptop
+    python -m tatpar.pipelines.sensitivity            # ~7-8 min on a 4-core laptop
     python -m tatpar.pipelines.sensitivity --quick
 """
 from __future__ import annotations

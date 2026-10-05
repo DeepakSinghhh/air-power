@@ -84,7 +84,7 @@ def route(q: str) -> dict:
         return {"answer": f"On D+{d} ({date}) {who} is forecast to have {b['p50'][d]:.0f} of {n} aircraft mission-capable "
                           f"(80 % range {b['p10'][d]:.0f}–{b['p90'][d]:.0f}) under current practice, or {tt['p50'][d]:.0f} "
                           f"({tt['p10'][d]:.0f}–{tt['p90'][d]:.0f}) with TATPAR's recommendations. "
-                          f"The 80 % band has contained {fc['calibration']['coverage_p10_p90']:.0%} of true outcomes in back-tests.",
+                          f"The 80 % band has contained {fc['calibration']['coverage_p10_p90']:.0%} of hidden-truth outcomes in simulated back-tests (notional fleet).",
                 "links": [{"label": "Readiness planner", "to": "/planner"}, {"label": "Overview", "to": "/"}], "tool": "forecast"}
     if any(w in ql for w in ("snag", "risk", "likely to fail", "fail")):
         rows = sorted(_tail_rows(ctx), key=lambda r: -r["p_snag_7d"])[:5]

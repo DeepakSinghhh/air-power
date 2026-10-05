@@ -70,13 +70,13 @@ Plus: **Readiness-Based Sparing (two-echelon VARI-METRIC) with prognostic demand
 ```bash
 make setup      # venv + backend + frontend deps
 make train      # download NASA C-MAPSS & MaintNet, generate the notional fleet, train all models   (~1–2 min)
-make bench      # Monte-Carlo studies, RBS, plans, federated learning, sensitivity → docs/04-evaluation.md (~9 min; reproduces the published numbers exactly)
+make bench      # Monte-Carlo studies, RBS, plans, federated learning, sensitivity → docs/04-evaluation.md (~12 min; reproduces the published numbers exactly)
 make ui         # build the React app
 make serve      # http://localhost:8000
 ```
 **Sign in:** the prototype ships a notional roster, one user per role (STN CDR, SENGO, LOG OFFR, DEPOT MGR, AUDITOR); the demo PINs are printed on the sign-in screen. For a unit deployment set `TATPAR_USERS` (roster JSON with PBKDF2 hashes from `python -m tatpar.trust.auth hash <pin>`) and `TATPAR_SECRET`; the demo PINs then stop working.
 
-Development: `make dev` (API on :8000, Vite on :5173 with hot reload). Tests: `make test` (40 backend tests) and, with the server running, `cd frontend && npm run e2e` (drives the real UI: sign-in, role gating, filing, approving, actioning an order, all boards day/night, phone width). CI runs both on every push (`.github/workflows/ci.yml`).
+Development: `make dev` (API on :8000, Vite on :5173 with hot reload). Tests: `make test` (backend tests) and, with the server running, `cd frontend && npm run e2e` (drives the real UI: sign-in, role gating, filing, approving, actioning an order, all boards day/night, phone width). CI runs both on every push (`.github/workflows/ci.yml`).
 
 **Offline / air-gapped:** `docker compose up --build` bakes datasets, models and the benchmark cache into the image at build time; the container then runs with no network.
 

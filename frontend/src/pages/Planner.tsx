@@ -19,9 +19,17 @@ export default function PlannerPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [approved, setApproved] = useState<any>(null);
+  const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (demo.data && !res) setRes(demo.data);
   }, [demo.data]);
+  useEffect(() => {   // a running clock while the futures are simulated (about 15–20 s for 80 on a laptop)
+    if (!busy) return;
+    setElapsed(0);
+    const t0 = Date.now();
+    const id = setInterval(() => setElapsed(Math.round((Date.now() - t0) / 1000)), 500);
+    return () => clearInterval(id);
+  }, [busy]);
 
   const run = async () => {
     setBusy(true);
@@ -73,7 +81,7 @@ export default function PlannerPage() {
           <span>× flying task. Test on</span>
           <input className="inline-field w-[54px]" type="number" min={20} max={200} step={20} value={form.reps} onChange={set("reps")} aria-label="Futures" />
           <span>futures.</span>
-          <button className="btn ink ml-2" onClick={run} disabled={busy}>{busy ? "PLANNING… ~10 S" : "PLAN"}</button>
+          <button className="btn ink ml-2" onClick={run} disabled={busy}>{busy ? `PLANNING… ${elapsed} S` : "PLAN"}</button>
           {err && <span className="mono text-[12px]" style={{ color: "var(--crit)" }}>{err}</span>}
         </div>
       </section>

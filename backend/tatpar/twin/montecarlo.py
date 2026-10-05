@@ -123,8 +123,8 @@ class Forecast:
         return (self.mc_sq[:, :, sqn] >= min_mc).mean(0).tolist()
 
     def mc_rate(self) -> float:
-        n = self.mc_sq.shape[-1]
-        return float(self.mc_total.mean() / 64)
+        n_tails = self.states[0, 0].sum()   # every aircraft is in exactly one state each day
+        return float(self.mc_total.mean() / n_tails)
 
     def state_share(self) -> dict[str, float]:
         tot = self.states.sum(-1, keepdims=True)

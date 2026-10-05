@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ...optimize.fmp import Requirement, phase_ladder, plan_fleet
 from ...optimize.requirement import plan_requirement
@@ -51,6 +51,17 @@ class PlanReq(BaseModel):
     end: int | None = None
     min_capable: int | None = None
 
+    @field_validator("sqn")
+    @classmethod
+    def _known_sqn(cls, v):
+        return _known(v) if v else v
+
+
+def _known(sqn: str) -> str:
+    if sqn not in SQN_IDS:
+        raise ValueError(f"unknown squadron {sqn!r}; expected one of {', '.join(SQN_IDS)}")
+    return sqn
+
 
 @router.post("/plan/run")
 def run_plan(req: PlanReq):
@@ -74,6 +85,11 @@ class RequirementReq(BaseModel):
     min_mc: int = Field(9, ge=1, le=16)
     surge: float = Field(1.2, ge=0.5, le=2.0)
     reps: int = Field(80, ge=20, le=200)
+
+    @field_validator("sqn")
+    @classmethod
+    def _known_sqn(cls, v):
+        return _known(v)
 
 
 @router.post("/requirement")

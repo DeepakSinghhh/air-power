@@ -218,7 +218,7 @@ function Outlook({ d }: { d: any }) {
   return (
     <Panel title="Outlook — mission-capable aircraft, next 60 days" meta="MEDIAN + P10–P90 OF 150 SIMULATED FUTURES">
       <Chart option={opt} height={250} />
-      <div className="foot">Both forecasts start from today's state and use only model predictions (no hidden truth). {cal && <>Back-test: the 80 % band contained {fmtPct(cal.coverage_p10_p90)} of real outcomes. </>}Weekly rhythm = aircraft recovered at weekends.</div>
+      <div className="foot">Both forecasts start from today's state and use only model predictions (no hidden truth). {cal && <>Simulated back-test: the 80 % band contained {fmtPct(cal.coverage_p10_p90)} of hidden-truth outcomes. </>}Weekly rhythm = aircraft recovered at weekends.</div>
     </Panel>
   );
 }

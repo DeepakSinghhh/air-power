@@ -14,7 +14,7 @@ Three regimes are compared on every base's held-out official test engines:
 * centralised — all raw data pooled (the privacy-violating upper bound).
 
 The model is a small MLP (scikit-learn) on the same rolling HUMS features as the production RUL
-model. In production the same loop runs with Flower over AFNET (see notebooks/02_federated_flower.ipynb).
+model. In production the same loop runs with Flower over AFNET (sketched in notebooks/02_federated_bases.ipynb).
 """
 from __future__ import annotations
 

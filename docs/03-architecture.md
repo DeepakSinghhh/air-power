@@ -47,11 +47,11 @@ EnvironmentIndex (base, dust, heat, humidity, altitude → severity)
 3. The Fleet Twin samples failure times from these distributions and simulates 60 days × 200 replications under the current plan → readiness fan chart and P(meet requirement).
 4. The FMP optimiser re-plans flying hours and check starts (bundling the predicted engine module work into the next phase check); RBS/transfers move spares toward bases with predicted demand.
 5. The planner re-runs the twin with each action to measure its marginal readiness gain → ranked action list.
-6. A human approves; the approval is appended to the hash-chained audit log; the outcome (actual failure, shop finding) flows back as new training data.
+6. A human approves; the approval is appended to the hash-chained audit log and the orders it issues are tracked to completion. Outcomes (actual failures, shop findings) are recorded; today the models are retrained offline with `make train`, and scheduled retraining on unit data is the production path.
 
 ## 4. Deployment
 
-- **Single command, offline:** `docker compose up` → backend (FastAPI + pre-built artifacts) and frontend (static build served by nginx). No internet needed at runtime; datasets and environment data are cached at build time.
+- **Single command, offline:** `docker compose up` → one container: FastAPI serving the API, the pre-built artifacts and the static React build. No internet needed at runtime; datasets and environment data are cached at build time.
 - **Edge / forward base:** the same image runs on a ruggedised CPU server; federated learning rounds sync model weights over AFNET when a link is available.
 - **Production path:** Postgres + TimescaleDB for HUMS, message bus (MQTT/Kafka) for streaming, Flower for federated orchestration, integration adapters for IMMOLS and e-MMS exports, PKI-backed signing for the audit chain.
 

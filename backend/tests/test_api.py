@@ -137,3 +137,8 @@ def test_file_and_import_snags(client, tmp_path, monkeypatch):
     assert rep["ok"] and rep["filed"] == 1 and rep["warnings"]
     auditor = {"Authorization": f"Bearer {_login(client, 'auditor', '2605').json()['token']}"}
     assert client.post("/api/snags/file", json={"tail": "HF-101", "text": "x"}, headers=auditor).status_code == 403
+
+
+def test_unknown_squadron_is_a_validation_error(client):
+    assert client.post("/api/requirement", json={"sqn": "SQN-Z"}).status_code == 422
+    assert client.post("/api/plan/run", json={"sqn": "SQN-Z", "start": 1, "end": 2, "min_capable": 3}).status_code == 422

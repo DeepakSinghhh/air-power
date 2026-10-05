@@ -6,7 +6,7 @@
 ## 0 · Hook (0:00–0:30) — 01 STATE
 - "Reported Su-30MKI serviceability has hovered around 50–60 %. Every SIH team can predict a failing part. The station commander's question is different: *how many aircraft will I have on day D, and how sure are you?*"
 - Sweep the **state board**: 64 tail plates, one colour and one code per state. "37 of 64 serviceable. SPR = awaiting spares, the biggest block."
-- Point to the **alerts**: HF-114's engine has 5 flight hours left. Then the **outlook**: grey = current practice, blue = with TATPAR. "In back-tests this 80 % band contained 84 % of real outcomes."
+- Point to the **alerts**: HF-114's engine has 5 flight hours left. Then the **outlook**: grey = current practice, blue = with TATPAR. "Checked against simulated futures whose ground truth the models never see, this 80 % band contained 84 % of outcomes."
 - The **signal** is written from the same numbers. Click **RELEASE AS STN CDR**: the stamp lands, and the release is logged in a hash-chained ledger.
 
 ## 1 · Readiness-backward planning (0:30–1:45) — 02 PLANNING CELL
