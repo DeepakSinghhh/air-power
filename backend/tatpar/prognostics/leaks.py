@@ -117,7 +117,7 @@ def rogue_units(surv: SurvivalModels, min_removals: int = 2, alpha: float = 0.01
             continue
         X = np.column_stack([g[f"cov_{k}"] / g["hours"] for k in COVS])
         p = surv.params[lru]
-        lam = np.exp(p["b0"] + X @ p["b"])
+        lam = surv.scale(lru, X)
         S = lambda t: np.exp(-(t / lam) ** p["rho"])
         se, st = S(g["entry"].to_numpy()), S(g["hours"].to_numpy())
         u = np.clip((se - st) / np.maximum(se, 1e-12), 1e-9, 1.0)

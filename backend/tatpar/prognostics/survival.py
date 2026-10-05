@@ -47,20 +47,24 @@ class SurvivalModels:
     params: dict = field(default_factory=dict)     # lru -> {"b0":, "b": array, "rho":}
     metrics: dict = field(default_factory=dict)
 
-    def fit(self, verbose: bool = True) -> "SurvivalModels":
+    def fit(self, verbose: bool = True, exclude_serials: set | None = None) -> "SurvivalModels":
         lives = build_lives(history.load("removals"), history.load("positions"))
+        if exclude_serials:   # flagged rogue units are modelled separately
+            lives = lives[~lives["serial"].isin(exclude_serials)]
         rows = []
         for lru, g in lives.groupby("lru"):
             if LRU_TYPES[lru].is_engine:
                 continue   # engines use the HUMS-based RUL model
             df = g[COVS + ["hours", "entry", "event"]].copy()
+            mu = df[COVS].mean().to_numpy()
+            df[COVS] = df[COVS] - mu          # centred: intercept = fleet-average conditions
             aft = WeibullAFTFitter(penalizer=0.01)
             aft.fit(df, duration_col="hours", event_col="event", entry_col="entry")
             lam = aft.params_["lambda_"]
             b0 = float(lam["Intercept"])
             b = np.array([float(lam[k]) for k in COVS])
             rho = float(np.exp(aft.params_["rho_"]["Intercept"]))
-            self.params[lru] = {"b0": b0, "b": b, "rho": rho}
+            self.params[lru] = {"b0": b0, "b": b, "rho": rho, "mu": mu}
             ci = concordance_index(df["hours"], aft.predict_median(df[COVS]), df["event"])
             rows.append({"lru": lru, "events": int(df["event"].sum()), "censored": int((1 - df["event"]).sum()),
                          "c_index": float(ci), "rho_hat": rho, "beta_true": LRU_TYPES[lru].beta})
@@ -87,7 +91,7 @@ class SurvivalModels:
             for sq in SQUADRONS.values():
                 f = base_features(sq.base)
                 x = np.array([f["dust"], f["heat"], f["hum"], 1.15])
-                lam = np.exp(p["b0"] + p["b"] @ x)
+                lam = np.exp(p["b0"] + p["b"] @ (x - p["mu"]))
                 from math import gamma
                 pred = lam * gamma(1 + 1 / p["rho"])
                 true = l.mean_life_fh / severity_multiplier(l, sq.base, 1.15)
@@ -99,8 +103,10 @@ class SurvivalModels:
 
     # ------------------------------------------------------------ queries
     def scale(self, lru: str, X: np.ndarray) -> np.ndarray:
+        """Weibull scale for raw (uncentred) covariates; rows of NaN mean 'fleet average'."""
         p = self.params[lru]
-        return np.exp(p["b0"] + X @ p["b"])
+        Z = np.nan_to_num(np.asarray(X, float) - p["mu"], nan=0.0)
+        return np.exp(p["b0"] + Z @ p["b"])
 
     def cond_fail_prob(self, lru: str, age: np.ndarray, horizon: np.ndarray, X: np.ndarray) -> np.ndarray:
         """P(failure within ``horizon`` more flight hours | survived ``age``)."""

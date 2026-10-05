@@ -21,7 +21,7 @@ class Policy:
     adhoc_rob_mc_prob: float = 0.35         # ad-hoc practice sometimes robs a serviceable aircraft
     overlap_checks_with_nmcs: bool = False  # do scheduled work while awaiting spares
     bundling: bool = False                  # pull predicted replacements into planned checks
-    bundle_threshold: float = 0.35
+    bundle_threshold: float = 0.5
     proactive_spares: bool = False          # weekly pre-positioning from predicted demand
     nff_screen: bool = False                # re-test before removal when P(NFF) is high
     nff_tpr: float = 0.0                    # measured classifier sensitivity on NFF
@@ -45,13 +45,13 @@ TATPAR = Policy(
     bundling=True,
     proactive_spares=True,
     nff_screen=True,
-    nff_tpr=0.6,
+    nff_tpr=0.47,          # measured on held-out snags (see artifacts/metrics.json)
     nff_fpr=0.08,
-    early_phase=True,
+    early_phase=False,     # ablation: no benefit once the phase-flow plan is in place
 )
 
 LEVERS = {
-    "flow": dict(dispatch="flow", early_phase=True),
+    "flow": dict(dispatch="flow"),
     "overlap": dict(overlap_checks_with_nmcs=True),
     "bundling": dict(bundling=True),
     "spares": dict(proactive_spares=True, lateral_after_days=1),

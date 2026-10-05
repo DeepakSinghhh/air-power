@@ -346,13 +346,19 @@ class Simulator:
         r = self._risk(d, horizon_days)
         sp = int(s.tail_sp[t])
         for pos in s.positions_of(t):
-            if s.pos_serial[pos] < 0 or r[pos] < self.p.bundle_threshold:
+            if s.pos_serial[pos] < 0:
                 continue
             li = int(s.pos_type[pos])
+            # engines: swap when failure before the next phase is likely; LRUs only when near-certain
+            thr = self.p.bundle_threshold if li == ENGINE_IDX else max(0.8, self.p.bundle_threshold)
+            if r[pos] < thr:
+                continue
             if li == ENGINE_IDX:
-                if pos not in self._swap_pending:
+                # only from surplus depot engines (keep one for AOG) and never queued ahead of AOG demands
+                ed_eng = s.stock.get((ED, li), [])
+                if pos not in self._swap_pending and len(ed_eng) >= 2:
                     self._swap_pending.add(int(pos))
-                    s.ed_queue.append((d, sp, li, int(pos)))
+                    s.shipments.append((d + TRANSIT_DAYS, sp, ed_eng.pop(0), int(pos)))
                 continue
             ser = self._take_from_base(sp, li)
             if ser is None:
@@ -574,6 +580,8 @@ class Simulator:
         p = self.p
         any_removal = False
         for pos, kind in evs:
+            if s.pos_serial[pos] < 0:
+                continue   # part was cannibalised earlier the same evening; its snag moves with it
             li = int(s.pos_type[pos])
             is_nff = kind == "nff"
             intermittent = self.rng.random() < (0.6 if is_nff else 0.12)
