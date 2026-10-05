@@ -16,8 +16,11 @@ COPY backend/pyproject.toml backend/constraints.txt backend/
 COPY backend/tatpar backend/tatpar
 RUN pip install --no-cache-dir -c backend/constraints.txt -e backend
 COPY data/env data/env
+COPY data/vendor data/vendor
+COPY data/samples data/samples
 COPY docs docs
-# Build data, models and the benchmark cache inside the image (needs internet only at build time).
+# Build data, models and the benchmark cache inside the image. The public datasets ship in data/vendor,
+# so only the package installs need internet at build time.
 ARG QUICK=0
 RUN cd backend && python -m tatpar.pipelines.build_all && \
     if [ "$QUICK" = "1" ]; then python -m tatpar.pipelines.bench --quick; else python -m tatpar.pipelines.bench; fi

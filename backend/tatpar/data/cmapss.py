@@ -5,7 +5,9 @@ run-to-failure simulation", PHM'08. Public domain, NASA Prognostics Center of Ex
 """
 from __future__ import annotations
 
+import hashlib
 import io
+import tarfile
 import urllib.request
 import zipfile
 from functools import lru_cache
@@ -14,10 +16,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ..config import RAW_DIR
+from ..config import RAW_DIR, REPO_DIR
 
 URL = "https://phm-datasets.s3.amazonaws.com/NASA/6.+Turbofan+Engine+Degradation+Simulation+Data+Set.zip"
 DIR = RAW_DIR / "cmapss"
+# copy shipped in the repository (the 12 text files + readme), used first so setup works offline
+VENDORED = REPO_DIR / "data" / "vendor" / "cmapss_txt.tar.xz"
+VENDORED_SHA256 = "5dce94cecb35f958c3d7de7277f54586182e5382b75e1b186e8fc6d5fa830159"
 SUBSETS = ("FD001", "FD002", "FD003", "FD004")
 
 SETTINGS = ["setting1", "setting2", "setting3"]
@@ -40,6 +45,11 @@ def ensure_downloaded() -> Path:
     if (DIR / "train_FD001.txt").exists():
         return DIR
     DIR.mkdir(parents=True, exist_ok=True)
+    if VENDORED.exists() and hashlib.sha256(VENDORED.read_bytes()).hexdigest() == VENDORED_SHA256:
+        with tarfile.open(VENDORED, "r:xz") as t:
+            names = [m for m in t.getmembers() if m.isfile() and "/" not in m.name]
+            t.extractall(DIR, members=names)
+        return DIR
     with urllib.request.urlopen(URL, timeout=300) as r:
         outer = zipfile.ZipFile(io.BytesIO(r.read()))
     inner_name = next(n for n in outer.namelist() if n.endswith("CMAPSSData.zip"))

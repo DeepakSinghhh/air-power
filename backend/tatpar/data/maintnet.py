@@ -6,16 +6,18 @@ coding. Source: https://people.rit.edu/fa3019/MaintNet/
 """
 from __future__ import annotations
 
+import shutil
 import urllib.request
 from functools import lru_cache
 
 import pandas as pd
 
-from ..config import RAW_DIR
+from ..config import RAW_DIR, REPO_DIR
 
 BASE = "https://people.rit.edu/fa3019/technical/data/"
 FILES = {"logbook": "maintnet_aviation_dataset_deidentified.csv", "abbrev": "aviation_abbriviation.csv"}
 DIR = RAW_DIR / "maintnet"
+VENDORED = REPO_DIR / "data" / "vendor" / "maintnet"     # shipped copy (CC BY-SA 4.0), used first
 
 
 def ensure_downloaded() -> bool:
@@ -24,6 +26,9 @@ def ensure_downloaded() -> bool:
     for f in FILES.values():
         p = DIR / f
         if p.exists():
+            continue
+        if (VENDORED / f).exists():
+            shutil.copyfile(VENDORED / f, p)
             continue
         try:
             with urllib.request.urlopen(BASE + f, timeout=60) as r:

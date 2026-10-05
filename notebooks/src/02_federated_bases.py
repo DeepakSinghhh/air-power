@@ -6,6 +6,8 @@
 # a forward detachment with only 8 engines of history.
 #
 # Compares local-only, FedAvg, FedProx (proximal term against client drift) and centralised training.
+# Each base normalises its sensors with its own statistics and is scored on its own official test
+# engines (Leh and Jodhpur split the FD004 test set); every regime gets the same number of local steps.
 # The production path is [Flower](https://flower.ai): each base runs a `NumPyClient` wrapping the same
 # `train`/`evaluate` functions below; the server runs `FedAvg`/`FedProx` strategies (see section 4).
 
@@ -50,11 +52,13 @@ def features(df, stats):
 BASES = {"Jodhpur": "FD004", "Pune": "FD001", "Tezpur": "FD003", "Thanjavur": "FD002", "Leh": "FD004"}
 clients = {}
 fd4_units = np.random.default_rng(1).permutation(load("train", "FD004").unit.unique())
+fd4_test = np.random.default_rng(2).permutation(load("test", "FD004").unit.unique())
+leh_test = set(fd4_test[: len(fd4_test) // 4])     # Leh and Jodhpur are scored on different FD004 test engines
 for b, fd in BASES.items():
-    tr = load("train", fd)
-    if b == "Leh": tr = tr[tr.unit.isin(fd4_units[:8])]
-    if b == "Jodhpur": tr = tr[~tr.unit.isin(fd4_units[:8])]
-    te = load("test", fd); te_last = te.groupby("unit").tail(1).index
+    tr, te = load("train", fd), load("test", fd)
+    if b == "Leh": tr, te = tr[tr.unit.isin(fd4_units[:8])], te[te.unit.isin(leh_test)]
+    if b == "Jodhpur": tr, te = tr[~tr.unit.isin(fd4_units[:8])], te[~te.unit.isin(leh_test)]
+    te_last = te.groupby("unit").tail(1).index
     st = fit_stats(tr); Xtr, ytr = features(tr, st); Xte_all, yte_all = features(te, st)
     pos = te.index.get_indexer(te_last)
     clients[b] = (torch.tensor(Xtr), torch.tensor(ytr), torch.tensor(Xte_all[pos]), torch.tensor(yte_all[pos]))
