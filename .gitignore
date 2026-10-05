@@ -21,3 +21,6 @@ frontend/dist/
 .vscode/
 frontend/*.tsbuildinfo
 *.bundle
+
+# notebook exports
+*.pt

@@ -119,3 +119,7 @@ print(pd.DataFrame(results).T.round(1).assign(mean=lambda d: d.mean(1).round(2))
 # ```
 # Add secure aggregation / differential privacy (Flower `SecAgg+`, `DifferentialPrivacyClientSideFixedClipping`) for
 # classified environments; transport runs over the existing AFNET backbone with mutual TLS.
+
+# %% [markdown]
+# ## 5 · About the saved outputs
+# The outputs saved in this notebook come from a CPU run with the defaults (`ROUNDS=60`, `LOCAL_STEPS=20`). This sketch uses simpler features (30-cycle rolling means, each base normalised with its own statistics) than the platform, so its errors are higher. The published federated numbers come from `backend/tatpar/federated/fedavg.py` (`docs/04-evaluation.md`, section 7). The pattern is the same: federated training helps the data-poor Leh detachment most, and can cost a data-rich base a little (Pune here), which is why the platform also reports a fine-tuned, personalised variant.
