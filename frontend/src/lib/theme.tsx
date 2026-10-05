@@ -2,9 +2,9 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 export type Tokens = Record<string, string>;
 const NAMES = [
-  "surface-1", "surface-2", "page", "text-primary", "text-secondary", "text-muted", "grid", "axis",
-  "series-1", "series-2", "series-3", "series-4", "series-5", "series-6", "series-7", "series-8", "baseline",
-  "good", "warning", "serious", "critical", "brand",
+  "page", "panel", "inset", "paper", "rule", "rule-2", "ink", "ink-2", "ink-3", "plate", "accent", "alert", "blue-ink",
+  "grid", "axis", "s-mc", "s-nmcs", "s-nmcms", "s-nmcmu", "s-depot", "s-wait", "cur", "tat",
+  "sq-1", "sq-2", "sq-3", "sq-4", "good", "warn", "crit", "stamp-red",
 ];
 
 function read(): Tokens {
@@ -14,55 +14,50 @@ function read(): Tokens {
   return t;
 }
 
-type Mode = "light" | "dark" | "system";
+type Mode = "light" | "dark";
 const Ctx = createContext<{ tokens: Tokens; mode: Mode; setMode: (m: Mode) => void; dark: boolean }>({
-  tokens: {}, mode: "system", setMode: () => {}, dark: false,
+  tokens: {}, mode: "light", setMode: () => {}, dark: false,
 });
 
+/** Day (paper) is the default; night is one click away and remembered per browser. */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<Mode>(() => {
     try {
-      return (localStorage.getItem("tatpar-theme") as Mode) || "system";
+      return localStorage.getItem("tatpar-theme") === "dark" ? "dark" : "light";
     } catch {
-      return "system";
+      return "light";
     }
   });
   const [tokens, setTokens] = useState<Tokens>({});
-  const [dark, setDark] = useState(false);
   useEffect(() => {
-    const root = document.documentElement;
-    if (mode === "system") root.removeAttribute("data-theme");
-    else root.setAttribute("data-theme", mode);
+    document.documentElement.setAttribute("data-theme", mode);
     try {
       localStorage.setItem("tatpar-theme", mode);
     } catch {
       /* storage unavailable */
     }
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const update = () => {
-      setTokens(read());
-      setDark(mode === "dark" || (mode === "system" && mq.matches));
-    };
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    setTokens(read());
   }, [mode]);
-  const value = useMemo(() => ({ tokens, mode, setMode, dark }), [tokens, mode, dark]);
+  const value = useMemo(() => ({ tokens, mode, setMode, dark: mode === "dark" }), [tokens, mode]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export const useTheme = () => useContext(Ctx);
 
-export const STATE_ORDER = ["MC", "NMCS", "NMCM_U", "NMCM_S", "DEPOT", "WAIT"] as const;
+/** Board order: serviceable first, then the four reasons an aircraft is down, then the bay queue. */
+export const STATE_ORDER = ["MC", "NMCS", "NMCM_S", "NMCM_U", "DEPOT", "WAIT"] as const;
+export const STATE_CODE: Record<string, string> = { MC: "S", NMCS: "SPR", NMCM_U: "U/S", NMCM_S: "SVC", DEPOT: "DEP", WAIT: "BAY" };
 export const STATE_LABEL: Record<string, string> = {
-  MC: "Mission capable",
-  NMCS: "Awaiting spares",
-  NMCM_U: "Unscheduled maint.",
-  NMCM_S: "Scheduled maint.",
-  DEPOT: "Depot overhaul",
+  MC: "Serviceable",
+  NMCS: "U/S awaiting spares",
+  NMCM_U: "U/S rectification",
+  NMCM_S: "In servicing",
+  DEPOT: "At depot (BRD)",
   WAIT: "Awaiting bay",
 };
-export const stateColor = (t: Tokens, s: string) =>
-  ({ MC: t["series-1"], NMCS: t["series-2"], NMCM_U: t["series-3"], NMCM_S: t["series-4"], DEPOT: t["series-5"], WAIT: t["series-7"] })[s] ||
-  t["baseline"];
-export const SQN_COLOR = (t: Tokens, i: number) => t[`series-${[1, 2, 3, 4][i] ?? 8}`];
+export const STATE_VAR: Record<string, string> = {
+  MC: "s-mc", NMCS: "s-nmcs", NMCM_U: "s-nmcmu", NMCM_S: "s-nmcms", DEPOT: "s-depot", WAIT: "s-wait",
+};
+export const stateColor = (t: Tokens, s: string) => t[STATE_VAR[s]] || t["ink-3"];
+export const stateCss = (s: string) => `var(--${STATE_VAR[s] ?? "ink-3"})`;
+export const SQN_COLOR = (t: Tokens, i: number) => t[`sq-${i + 1}`] ?? t["ink-2"];

@@ -60,11 +60,13 @@ Runs fully offline (Docker, CPU laptop or edge server). Federated learning lets 
 
 | Persona | 60-second question | Screen |
 |---|---|---|
-| Station / Command | Will I meet tomorrow's and next month's task? | Command Overview, Readiness Planner |
-| Squadron Engineering Officer | Which tails fly, which go in, what to bundle? | Fleet Flow, Aircraft Health, Snag Intelligence |
-| Logistics Officer | What to stock where, what to move, what to expedite? | Sustainment |
-| BRD / Depot Manager | Which repairs add the most readiness? | Sustainment → depot expedite list |
-| Analyst / Auditor | Is the data trustworthy, are the models calibrated? | Data Fabric, Models & Trust |
+| Station Commander (STN CDR) | Will I meet tomorrow's and next month's task? | 01 State, 02 Planning Cell, 06 After-Action |
+| Senior Engineering Officer (SENGO) | Which tails fly, which go in, what to bundle? | 03 Flight Line, 04 Airframe, 07 Tech Log |
+| Logistics Officer | What to stock where, what to move, what to expedite? | 05 Stores |
+| BRD / Depot Manager | Which repairs add the most readiness? | 05 Stores → depot expedite list |
+| Analyst / Auditor | Is the data trustworthy, are the models calibrated? | 08 Proof |
+
+The interface is an **operations room**, not a generic dashboard: a tail-plate state board, a daily serviceability signal in service message format (released with a rubber-stamp approval into the hash-chained ledger), a phase track that shows checks bunching at the hangar, Form-700-style technical-log sheets, a whiteprint condition drawing per aircraft, and a duty-officer teleprinter for questions. Day (paper) theme by default for projection and print; night theme one click away.
 
 ## 5. How we measure success (honestly)
 

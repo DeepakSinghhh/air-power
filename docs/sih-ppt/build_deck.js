@@ -241,7 +241,7 @@ async function icon(Comp, color, size = 256) {
       ])],
     { x: 4.7, y: 1.3, w: 8.13, colW: [2.6, 5.53], fontSize: 12, fontFace: "Calibri", rowH: 0.44, border: { type: "solid", pt: 0.5, color: "D5DEE8" }, valign: "middle", margin: 0.06, objectName: "risk-table" }
   );
-  const shots = [["shot-planner.png", "Readiness planner"], ["shot-flow.png", "CP-SAT flight & maintenance plan"], ["shot-aircraft.png", "Engine RUL + module attribution"]];
+  const shots = [["shot-state.png", "01 State board + daily signal"], ["shot-planner.png", "02 Planning cell (P(meet) staircase)"], ["shot-aircraft.png", "04 Airframe: drawing + engine RUL"]];
   shots.forEach(([f, cap], i) => {
     const x = 4.7 + i * 2.765;
     s.addImage({ path: path.join(__dirname, f), x, y: 4.25, w: 2.6, h: 1.625, objectName: "shot-" + i });

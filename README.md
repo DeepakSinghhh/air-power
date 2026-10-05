@@ -6,7 +6,28 @@
 
 TATPAR joins up health monitoring, technical records, spares and repair-agency data, then plans flying, maintenance and spares so the required number of aircraft is mission-capable on the day of need — **with stated confidence**.
 
-![Command overview](docs/screenshots/overview-dark.png)
+![01 State — the ops room state board, alerts and daily serviceability signal](docs/screenshots/hero.png)
+
+## The ops room
+
+The interface is built for the people who run a station, not as a generic dashboard: eight numbered boards on a command strip with a live date-time group, the authority at the desk, and a DAY / NIGHT switch.
+
+| Board | What it answers |
+|---|---|
+| **01 State** | Tail-plate board of all 64 aircraft (state code, hours to phase, engine and snag flags), cockpit-style alert list, auto-written **daily serviceability signal** released with a rubber-stamp approval, phase track and 60-day outlook |
+| **02 Planning Cell** | The requirement as one sentence with editable fields → P(meet) staircase → numbered **operation order** → stamped approval into the ledger |
+| **03 Flight Line** | Phase track whose aircraft tokens slide between today, +180 days current practice and +180 days TATPAR; CP-SAT flying programme; engine protection |
+| **04 Airframe** | Fleet register, **whiteprint condition drawing** with numbered callouts, engine RUL trend + module attribution, component record, Form-700 technical log |
+| **05 Stores** | Supply-chain schematic (squadron stores ↔ equipment depot ↔ BRD / HAL), RBS frontier, AOG decision board, transfers, expedites, NFF and rogue units |
+| **06 After-Action** | Loss waterfall, lever staircase, readiness waves |
+| **07 Tech Log** | File a snag in a Form-700 line (Hinglish welcome) → ATA stamp, removal decision, what fixed it before, similar entries |
+| **08 Proof** | Provenance and lineage, calibration evidence, federated learning, model data plates, the hash-chained decision ledger |
+
+| Released signal | Approved operation order | Duty officer |
+|---|---|---|
+| ![signal](docs/screenshots/moment-signal-released.png) | ![order](docs/screenshots/moment-order-approved.png) | ![duty officer](docs/screenshots/moment-duty-officer.png) |
+
+All boards, day and night: [docs/screenshots](docs/screenshots).
 
 ## Results at a glance
 
@@ -73,7 +94,7 @@ backend/tatpar/
   trust/         hash-chained audit log
   api/           FastAPI routers (+ offline copilot)
   pipelines/     build_all (data → models), bench (experiments → docs)
-frontend/        React + TypeScript + Tailwind + ECharts command centre (9 views, light/dark)
+frontend/        React + TypeScript + Tailwind + ECharts ops room (8 boards, day/night, fonts bundled offline)
 notebooks/       Colab GPU notebooks
 docs/            research, solution, architecture, evaluation, deck, screenshots
 ```

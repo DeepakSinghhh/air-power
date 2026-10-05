@@ -10,7 +10,7 @@
 | 2 · Intelligence | Engine RUL with conformal intervals; LRU survival; NFF, rogue-unit and chronic-defect detection; snag NLP; federated learning | LightGBM, SHAP, lifelines, scikit-learn | `backend/tatpar/prognostics`, `backend/tatpar/nlp`, `backend/tatpar/federated` |
 | 3 · Fleet Twin | Day-stepped simulation of the sustainment system with common random numbers; Monte-Carlo readiness forecast | NumPy, multiprocessing | `backend/tatpar/twin` |
 | 4 · Decision engines | FMP (flying + checks), RBS (VARI-METRIC), lateral transfers, cannibalisation advisor, readiness-backward planner, loss waterfall | OR-Tools CP-SAT, SciPy | `backend/tatpar/optimize` |
-| 5 · Experience | Command centre (10 views), persona switcher, copilot | FastAPI, React + TypeScript, ECharts | `backend/tatpar/api`, `frontend/` |
+| 5 · Experience | Ops room (8 boards: state, planning cell, flight line, airframe, stores, after-action, tech log, proof), authority switcher, duty-officer copilot | FastAPI, React + TypeScript, ECharts | `backend/tatpar/api`, `frontend/` |
 | 6 · Trust & sovereignty | Offline deployment, RBAC, human approval, hash-chained audit, model cards | Docker Compose, SHA-256 chain | `backend/tatpar/trust` |
 
 ## 2. Common data model (aligned to ASD S5000F / ATA iSpec 2200 / MIMOSA OSA-CBM)
