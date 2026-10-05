@@ -11,7 +11,7 @@
 
 ## 1 · Readiness-backward planning (0:30–1:45) — 02 PLANNING CELL
 - The task reads as one sentence: **SQN-A to hold at least 9 aircraft every day from D+14 to D+17 at 1.2 × flying task**.
-- "Current practice meets it 12 % of the time." Walk up the **staircase**: flying & maintenance plan → pre-positioned spares → depot expedite → consolidated cannibalisation & No-Fault-Found screening → 44 %.
+- "Current practice meets it 12 % of the time." Walk up the **staircase**: flying & maintenance plan → pre-positioned spares → depot expedite → consolidated cannibalisation & No-Fault-Found screening → 46 %.
 - "Each step is measured on the same random futures, so the gain belongs to that action."
 - Read the **operation order**: phase checks moved, engines capped at their conformal lower bound, which spares move where. Click **APPROVE**: stamp, ledger entry, and one **order per action** appears in the tracker, routed to its owner (SENGO, LOG OFFR, DEPOT MGR). "Approval is the start of the loop: the logistics officer marks the transfers actioned, and each change is signed into the ledger." 
 
