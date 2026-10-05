@@ -4,7 +4,7 @@ Runs the Monte-Carlo experiments behind every headline number and stores them as
 ``artifacts/bench`` (served by the API), then writes ``docs/04-evaluation.md``.
 
     python -m tatpar.pipelines.bench            # ~3-4 min on a 4-core laptop
-    python -m tatpar.pipelines.bench --quick    # fewer replications
+    python -m tatpar.pipelines.bench --quick    # fewer replications (does not rewrite the docs)
 """
 from __future__ import annotations
 
@@ -161,7 +161,8 @@ def run(quick: bool = False) -> dict:
         "sensitivity": {"min_delta": sens["min_delta"], "max_delta": sens["max_delta"], "all_positive": sens["all_positive"]},
     }
     _save("summary", summary)
-    write_evaluation_doc(metrics)
+    if not quick:   # the published numbers come from the full run; --quick (CI, smoke) leaves the docs alone
+        write_evaluation_doc(metrics)
     print(json.dumps(summary, indent=1, default=_default))
     return summary
 

@@ -70,7 +70,7 @@ Plus: **Readiness-Based Sparing (two-echelon VARI-METRIC) with prognostic demand
 ```bash
 make setup      # venv + backend + frontend deps
 make train      # download NASA C-MAPSS & MaintNet, generate the notional fleet, train all models   (~1–2 min)
-make bench      # Monte-Carlo policy study, RBS, plans, federated learning → docs/04-evaluation.md (~4 min)
+make bench      # Monte-Carlo studies, RBS, plans, federated learning, sensitivity → docs/04-evaluation.md (~9 min; reproduces the published numbers exactly)
 make ui         # build the React app
 make serve      # http://localhost:8000
 ```
