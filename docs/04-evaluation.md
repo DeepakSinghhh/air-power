@@ -26,6 +26,11 @@ Conformalised quantile regression lifts interval coverage to the nominal 90 % wi
 * Rogue-unit detector: precision **100%**, recall 29% of rogue serials with any removal (36% of those with ≥3).
 * Chronic-defect episodes found: 7.
 
+## 3b. Snag intelligence (ATA auto-coding)
+
+* Real MaintNet logbook problems (held-out, against keyword weak labels; 65% of records labelled): accuracy **98.7%**, macro-F1 0.71.
+* Fleet snags (held-out tails): accuracy 100.0% — easy by construction (templated synthetic text); Hinglish entries included.
+
 ## 4. Readiness forecast calibration
 
 Belief-mode forecasts (models only) vs outcomes drawn from the hidden truth: the P10–P90 band contains **84%** of true daily outcomes (nominal 80 %), the P25–P75 band 56% (nominal 50 %).

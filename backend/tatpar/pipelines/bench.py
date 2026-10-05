@@ -198,6 +198,13 @@ def write_evaluation_doc(metrics: dict) -> None:
         f"of rogue serials with any removal ({metrics['rogue']['recall_3plus_removals']:.0%} of those with ≥3).",
         f"* Chronic-defect episodes found: {metrics['chronic_defects']}.",
         "",
+        "## 3b. Snag intelligence (ATA auto-coding)",
+        "",
+        f"* Real MaintNet logbook problems (held-out, against keyword weak labels; {metrics['snag_nlp']['maintnet_weak_label_coverage']:.0%} of records labelled): "
+        f"accuracy **{metrics['snag_nlp']['maintnet']['accuracy']:.1%}**, macro-F1 {metrics['snag_nlp']['maintnet']['macro_f1']:.2f}.",
+        f"* Fleet snags (held-out tails): accuracy {metrics['snag_nlp']['fleet']['accuracy']:.1%} — easy by construction "
+        "(templated synthetic text); Hinglish entries included.",
+        "",
         "## 4. Readiness forecast calibration",
         "",
         f"Belief-mode forecasts (models only) vs outcomes drawn from the hidden truth: the P10–P90 band "

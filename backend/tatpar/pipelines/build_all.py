@@ -16,6 +16,8 @@ from ..prognostics.belief import Belief
 from ..prognostics.engine_rul import MODEL_PATH as RUL_PATH, EngineRUL
 from ..prognostics.leaks import NFFModel, chronic_defects, rogue_metrics, rogue_units
 from ..prognostics.survival import SurvivalModels
+from ..data import maintnet
+from ..nlp.snags import SnagNLP
 
 METRICS_PATH = ARTIFACTS_DIR / "metrics.json"
 
@@ -41,12 +43,16 @@ def build(skip_rul: bool = False) -> dict:
     chronic.to_parquet(ARTIFACTS_DIR / "chronic_defects.parquet", index=False)
     belief = Belief.build(surv, rul, set(rogue.loc[rogue["flag"], "serial"]))
     belief.save()
+    maintnet.ensure_downloaded()
+    nlp = SnagNLP().fit()
+    nlp.save()
     metrics = {
         "engine_rul": rul.metrics,
         "survival": {k: v for k, v in surv.metrics.items()},
         "nff": nff.metrics,
         "rogue": rogue_metrics(rogue),
         "chronic_defects": int(len(chronic)),
+        "snag_nlp": nlp.metrics,
     }
     METRICS_PATH.write_text(json.dumps(metrics, indent=1, default=float))
     print(f"build complete in {time.time() - t0:.0f}s -> {ARTIFACTS_DIR}")
