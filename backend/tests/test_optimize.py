@@ -63,3 +63,19 @@ def test_belief_forecast_is_calibrated():
 
     fc = json.loads((ARTIFACTS_DIR / "bench" / "forecast.json").read_text())
     assert 0.7 <= fc["calibration"]["coverage_p10_p90"] <= 0.95
+
+
+@needs_artifacts
+def test_flight_plan_is_reproducible_across_processes():
+    """The CP-SAT plan must not depend on thread timing or hash seeds (the published P(meet) rests on it)."""
+    import os
+    import subprocess
+    import sys
+
+    code = ("import hashlib, json; from tatpar.datagen import history; from tatpar.prognostics.belief import Belief;"
+            "from tatpar.optimize.fmp import Requirement, plan_squadron;"
+            "p = plan_squadron(history.load_state(), 0, 30, Belief.load(), Requirement(0, 14, 17, 9), 5.0);"
+            "print(p['status'], hashlib.md5(json.dumps([p['hours'], p['checks']], sort_keys=True).encode()).hexdigest())")
+    outs = [subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True,
+                           env={**os.environ, "PYTHONHASHSEED": h}).stdout.strip() for h in ("1", "2")]
+    assert outs[0] == outs[1] and outs[0].startswith("OPTIMAL"), outs

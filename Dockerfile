@@ -12,9 +12,9 @@ FROM python:3.11-slim AS app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY backend/pyproject.toml backend/
+COPY backend/pyproject.toml backend/constraints.txt backend/
 COPY backend/tatpar backend/tatpar
-RUN pip install --no-cache-dir -e backend
+RUN pip install --no-cache-dir -c backend/constraints.txt -e backend
 COPY data/env data/env
 COPY docs docs
 # Build data, models and the benchmark cache inside the image (needs internet only at build time).

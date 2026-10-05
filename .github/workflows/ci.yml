@@ -26,7 +26,7 @@ jobs:
       - name: Install backend
         run: |
           python -m venv backend/.venv
-          backend/.venv/bin/pip install -q -e "backend[dev]"
+          backend/.venv/bin/pip install -q -c backend/constraints.txt -e "backend[dev]"
 
       - name: Install frontend
         run: cd frontend && npm ci --no-audit --no-fund

@@ -6,7 +6,7 @@ PIP ?= backend/.venv/bin/pip
 
 setup:            ## create the Python venv and install backend + frontend dependencies
 	python3 -m venv backend/.venv
-	$(PIP) install -q -e "backend[dev]"
+	$(PIP) install -q -c backend/constraints.txt -e "backend[dev]"
 	cd frontend && npm install --no-audit --no-fund
 
 data:             ## download public datasets + generate the notional fleet history

@@ -65,7 +65,7 @@ Plus: **Readiness-Based Sparing (two-echelon VARI-METRIC) with prognostic demand
 
 ## Run it
 
-**Requirements:** Python 3.10+, Node 20+ (or just Docker). CPU laptop is enough.
+**Requirements:** Python 3.11–3.13, Node 20+ (or just Docker). CPU laptop is enough. `make setup` installs the exact library versions in `backend/constraints.txt`, so a full `make bench` reproduces the published numbers.
 
 ```bash
 make setup      # venv + backend + frontend deps

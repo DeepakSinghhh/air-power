@@ -61,6 +61,12 @@ def _ready_day(st: FleetState, t: int) -> int:
     return max(0, ready)
 
 
+# CP-SAT settings. One worker with a deterministic work budget gives the same plan on every machine and
+# every run (the plans have many equally optimal solutions; parallel workers picked one by thread timing).
+# Measured: all four squadrons still solve to OPTIMAL, in 0.3–3.5 s each.
+SOLVER = {"workers": 1, "interleave": False, "det_per_s": 1.0}
+
+
 def plan_squadron(st: FleetState, sq: int, horizon: int = 30, belief=None, req: Requirement | None = None,
                   time_limit: float = 6.0) -> dict:
     sqd = SQUADRONS[SQN_IDS[sq]]
@@ -189,8 +195,12 @@ def plan_squadron(st: FleetState, sq: int, horizon: int = 30, belief=None, req: 
                  - 20 * sum(cap[k, d] for k in range(n) for d in range(H))
                  + 5 * sum(down[k, d] for k in range(n) for d in range(H)))
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = time_limit
-    solver.parameters.num_workers = 4
+    # stop on the deterministic work budget, not wall-clock time, so CPU speed cannot change the plan
+    solver.parameters.num_workers = SOLVER["workers"]
+    solver.parameters.interleave_search = SOLVER["interleave"]
+    solver.parameters.random_seed = 0
+    solver.parameters.max_deterministic_time = SOLVER["det_per_s"] * time_limit
+    solver.parameters.max_time_in_seconds = 60.0   # safety cap only
     res = solver.Solve(mdl)
     ok = res in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
