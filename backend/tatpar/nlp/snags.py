@@ -150,7 +150,8 @@ class SnagNLP:
         df = self.corpus.assign(similarity=sims)
         if source:
             df = df[df["source"] == source]
-        df = df[df["similarity"] > 0.05].nlargest(k, "similarity")
+        df = df[df["similarity"] > 0.05].sort_values("similarity", ascending=False)
+        df = df.groupby("problem", sort=False).head(2).head(k)   # variety over identical log wording
         return df.replace({np.nan: None}).to_dict("records")
 
     def fix_effectiveness(self, ata: int) -> list[dict]:

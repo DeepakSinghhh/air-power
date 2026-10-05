@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+/* ---------- design tokens (validated categorical palette; see dataviz reference) ---------- */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --surface-2: #f3f2ee;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --series-1: #2a78d6; /* blue  — MC / TATPAR */
+  --series-2: #eb6834; /* orange — awaiting spares */
+  --series-3: #1baf7a; /* aqua  — unscheduled */
+  --series-4: #eda100; /* yellow — scheduled */
+  --series-5: #e87ba4; /* magenta — depot */
+  --series-6: #008300; /* green */
+  --series-7: #4a3aa7; /* violet — awaiting bay */
+  --series-8: #e34948; /* red */
+  --baseline: #898781; /* current practice (neutral) */
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --success-text: #006300;
+  --brand: #e8871e; /* saffron accent — UI chrome only */
+  --brand-ink: #0b1b33;
+  --nav: #0b1b33;
+  --nav-ink: #dbe4f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --surface-2: #232321;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --baseline: #898781;
+    --success-text: #0ca30c;
+    --nav: #0a1424;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface-1: #1a1a19;
+  --surface-2: #232321;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.1);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --baseline: #898781;
+  --success-text: #0ca30c;
+  --nav: #0a1424;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- primitives ---------- */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.card-pad {
+  padding: 16px 18px;
+}
+.muted {
+  color: var(--text-muted);
+}
+.secondary {
+  color: var(--text-secondary);
+}
+.h-title {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.h-sub {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.btn:hover {
+  filter: brightness(1.04);
+}
+.btn-primary {
+  background: var(--brand);
+  color: #1b1206;
+  border-color: transparent;
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+.input,
+select.input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+table.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+table.tbl th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--grid);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+}
+table.tbl td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--grid);
+  vertical-align: top;
+}
+table.tbl tr:hover td {
+  background: var(--surface-2);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+  flex: none;
+}
+.scroll-y {
+  overflow-y: auto;
+}

@@ -187,7 +187,7 @@ def plan_squadron(st: FleetState, sq: int, horizon: int = 30, belief=None, req: 
 
     mdl.Minimize(1000 * sum(short) + 3000 * sum(req_short) + 2 * sum(dev)
                  - 20 * sum(cap[k, d] for k in range(n) for d in range(H))
-                 + 30 * sum(down[k, d] for k in range(n) for d in range(H)))
+                 + 5 * sum(down[k, d] for k in range(n) for d in range(H)))
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = time_limit
     solver.parameters.num_workers = 4
