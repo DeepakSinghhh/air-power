@@ -15,6 +15,7 @@ dependencies = [
   "pyarrow>=15",
   "fastapi>=0.110",
   "uvicorn[standard]>=0.29",
+  "python-multipart>=0.0.9",
   "pydantic>=2.6",
   "joblib>=1.3",
 ]
